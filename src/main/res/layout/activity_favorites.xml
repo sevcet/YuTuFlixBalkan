@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:background="#101010"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Dugme za nazad -->
+    <ImageButton
+        android:id="@+id/btnBackFavorites"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/baseline_arrow_back_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="12dp"
+        android:layout_margin="8dp"
+        android:contentDescription="Nazad" />
+
+    <!-- RecyclerView za omiljene -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/favoritesRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+</LinearLayout>

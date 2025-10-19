@@ -1,0 +1,71 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#101010">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/detailSeriesImage"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:scaleType="centerCrop" />
+
+        <!-- Srce za omiljene -->
+        <ImageButton
+            android:id="@+id/favoriteIconSeries"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_favorite_border"
+            android:background="@android:color/transparent"
+            android:contentDescription="Dodaj u omiljene"
+            android:layout_gravity="end"
+            android:layout_marginTop="8dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/detailSeriesTitle"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/detailSeriesYear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/detailSeriesGenre"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/detailSeriesDesc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#FFFFFF" />
+
+        <!-- Grid layout za sve epizode -->
+        <GridLayout
+            android:id="@+id/seasonsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:columnCount="2"
+            android:orientation="horizontal"
+            android:clipToPadding="false"
+            android:padding="4dp" />
+
+    </LinearLayout>
+</ScrollView>
