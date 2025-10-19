@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#101010"
+    tools:context=".MainActivity">
+
+    <!-- GLAVNI SADRŽAJ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- RED SA BUTTONIMA KATEGORIJA -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:background="#202020"
+            android:padding="8dp">
+
+            <LinearLayout
+                android:id="@+id/categoryButtonsContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Button
+                    android:id="@+id/btnDomaci_filmovi"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Domaci filmovi" />
+
+                <Button
+                    android:id="@+id/btnDomace_serije"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Domace serije" />
+
+                <Button
+                    android:id="@+id/btnAkcija"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Akcija" />
+
+                <Button
+                    android:id="@+id/btnKomedija"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Komedija" />
+
+                <Button
+                    android:id="@+id/btnHoror"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Horor" />
+
+                <Button
+                    android:id="@+id/btnSci_Fi"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sci-Fi" />
+
+                <Button
+                    android:id="@+id/btnRomansa"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Romansa" />
+
+                <Button
+                    android:id="@+id/btnMisterija"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Misterija" />
+
+                <Button
+                    android:id="@+id/btnDokumentarni"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Dokumentarni" />
+
+                <Button
+                    android:id="@+id/btnAnimirani"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Animirani" />
+
+                <Button
+                    android:id="@+id/btnFavorites"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Omiljeni" />
+
+                <Button
+                    android:id="@+id/btnAbout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="O Nama"
+                    android:textColor="#FFFFFF" />
+
+                <Button
+                    android:id="@+id/btnPrivacy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Privacy Policy" />
+
+                <Button
+                    android:id="@+id/btnShare"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Podeli aplikaciju" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- PRETRAGA -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/searchBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Pretraži video"
+                android:background="@android:drawable/edit_text"
+                android:padding="8dp"
+                android:textColor="#000000"
+                android:textColorHint="#AAAAAA"
+                android:inputType="text" />
+
+            <Button
+                android:id="@+id/searchBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Traži" />
+        </LinearLayout>
+
+        <!-- LISTA KATEGORIJA I FILMOVA -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/categoryRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="4dp" />
+
+    </LinearLayout>
+
+    <!-- LOADING CONTAINER SA ANIMACIJOM I TEKSTOM -->
+    <LinearLayout
+        android:id="@+id/loadingContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone"
+        android:padding="20dp">
+
+        <!-- LOTTI ANIMACIJA -->
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/loadingProgress"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
+            app:lottie_autoPlay="true"
+            app:lottie_loop="true"
+            app:lottie_rawRes="@raw/loading_animation" />
+
+        <!-- TEKST ISPOD ANIMACIJE -->
+        <TextView
+            android:id="@+id/loadingText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Učitavam video sadržaj..."
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:layout_marginTop="10dp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</FrameLayout>
