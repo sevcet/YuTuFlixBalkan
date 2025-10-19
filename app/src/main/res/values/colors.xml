@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#000000</color>
+    <color name="colorPrimaryDark">#000000</color>
+    <color name="colorAccent">#FFFFFF</color>
+
+    <!-- Dodate boje -->
+    <color name="searchBackground">#222222</color>
+    <color name="searchText">#FFFFFF</color>
+    <color name="searchHint">#AAAAAA</color>
+</resources>
