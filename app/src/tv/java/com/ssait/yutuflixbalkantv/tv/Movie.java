@@ -1,5 +1,4 @@
-package com.ssait.yutuflixbalkantv;
-
+package com.ssait.yutuflixbalkantv.tv;
 import android.os.Parcel;
 import android.os.Parcelable;
 import java.util.List;
