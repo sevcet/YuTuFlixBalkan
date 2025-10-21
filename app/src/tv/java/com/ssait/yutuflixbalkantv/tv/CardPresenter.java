@@ -4,7 +4,7 @@ import android.view.ViewGroup;
 import androidx.leanback.widget.ImageCardView;
 import androidx.leanback.widget.Presenter;
 import com.bumptech.glide.Glide;
-import com.ssait.yutuflixbalkantv.Movie;
+import com.ssait.yutuflixbalkan.Movie;
 
 public class CardPresenter extends Presenter {
 
@@ -12,7 +12,7 @@ public class CardPresenter extends Presenter {
     public ViewHolder onCreateViewHolder(ViewGroup parent) {
         ImageCardView card = new ImageCardView(parent.getContext());
         card.setCardType(ImageCardView.CARD_TYPE_INFO_UNDER);
-        card.setMainImageDimensions(313, 176);
+        card.setMainImageDimensions(313, 176);   // 16:9
         return new ViewHolder(card);
     }
 

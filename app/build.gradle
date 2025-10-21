@@ -54,6 +54,7 @@ dependencies {
     implementation 'com.google.android.gms:play-services-ads:22.6.0'
     implementation 'com.airbnb.android:lottie:6.1.0'
     tvImplementation 'androidx.leanback:leanback:1.2.0-alpha04'
+    tvImplementation 'com.google.android.gms:play-services-ads:22.6.0'
 
 
 }
