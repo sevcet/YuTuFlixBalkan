@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import androidx.fragment.app.Fragment;
 import com.yutuflix.tv.R;
 import com.yutuflix.tv.ui.search.SearchFragment;
@@ -39,7 +38,6 @@ public class HomeFragment extends Fragment {
         });
 
         btnSearch.setOnClickListener(v -> {
-            // Otvori search fragment
             SearchFragment searchFragment = new SearchFragment();
             getParentFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, searchFragment)
@@ -48,7 +46,6 @@ public class HomeFragment extends Fragment {
         });
 
         btnCategories.setOnClickListener(v -> {
-            // Otvori categories fragment
             CategoriesFragment categoriesFragment = new CategoriesFragment();
             getParentFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, categoriesFragment)
