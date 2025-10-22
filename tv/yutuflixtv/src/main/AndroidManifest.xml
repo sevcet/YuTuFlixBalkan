@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -10,6 +11,11 @@
         android:label="YuTuFlix Balkan TV"
         android:theme="@style/Theme.Leanback"
         tools:targetApi="31">
+
+        <activity
+            android:name=".PlayerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Leanback" />
 
         <activity
             android:name=".MainActivity"

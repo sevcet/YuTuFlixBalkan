@@ -1,11 +1,13 @@
 package com.yutuflix.tv.ui.home;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import androidx.fragment.app.Fragment;
+import com.yutuflix.tv.PlayerActivity;
 import com.yutuflix.tv.R;
 import com.yutuflix.tv.ui.search.SearchFragment;
 import com.yutuflix.tv.ui.categories.CategoriesFragment;
@@ -28,6 +30,7 @@ public class HomeFragment extends Fragment {
         btnCategories = view.findViewById(R.id.btnCategories);
 
         setupNavigation();
+        setupSampleVideo(); // Dodaj sample video za test
 
         return view;
     }
@@ -52,5 +55,32 @@ public class HomeFragment extends Fragment {
                     .addToBackStack(null)
                     .commit();
         });
+    }
+
+    private void setupSampleVideo() {
+        // Pronađi TextView i postavi klik listener
+        View view = getView();
+        if (view != null) {
+            View testVideo = view.findViewById(R.id.testVideo);
+            if (testVideo != null) {
+                testVideo.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // Koristi javni test video URL koji radi na svim uređajima
+                        String testVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+                        String testTitle = "Test Video";
+
+                        Intent intent = new Intent(getActivity(), PlayerActivity.class);
+                        intent.putExtra("videoUrl", testVideoUrl);
+                        intent.putExtra("videoTitle", testTitle);
+                        startActivity(intent);
+                    }
+                });
+
+                // Fokus za TV navigaciju
+                testVideo.setFocusable(true);
+                testVideo.setFocusableInTouchMode(true);
+            }
+        }
     }
 }
