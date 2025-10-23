@@ -1,6 +1,245 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/fragment_container"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black" />
+    android:orientation="vertical"
+    android:background="@color/black"
+    android:padding="10dp">
+
+    <!-- TOP ROW - HORIZONTAL SCROLL BUTTONS + FIXED SEARCH BUTTON -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
+
+        <!-- HORIZONTAL SCROLL VIEW FOR BUTTONS -->
+        <HorizontalScrollView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.7"
+            android:scrollbars="none"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:id="@+id/buttonsContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Button
+                    android:id="@+id/btnHome"
+                    android:layout_width="120dp"
+                    android:layout_height="70dp"
+                    android:text="Početna"
+                    android:textSize="16sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <Button
+                    android:id="@+id/btnDomaciFilmovi"
+                    android:layout_width="150dp"
+                    android:layout_height="70dp"
+                    android:text="Domaci Filmovi"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <Button
+                    android:id="@+id/btnDomaceSerije"
+                    android:layout_width="140dp"
+                    android:layout_height="70dp"
+                    android:text="Domace Serije"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <Button
+                    android:id="@+id/btnAkcija"
+                    android:layout_width="100dp"
+                    android:layout_height="70dp"
+                    android:text="Akcija"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <Button
+                    android:id="@+id/btnKomedija"
+                    android:layout_width="110dp"
+                    android:layout_height="70dp"
+                    android:text="Komedija"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <Button
+                    android:id="@+id/btnHoror"
+                    android:layout_width="90dp"
+                    android:layout_height="70dp"
+                    android:text="Horor"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <Button
+                    android:id="@+id/btnSciFi"
+                    android:layout_width="90dp"
+                    android:layout_height="70dp"
+                    android:text="Sci-Fi"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <Button
+                    android:id="@+id/btnRomansa"
+                    android:layout_width="110dp"
+                    android:layout_height="70dp"
+                    android:text="Romansa"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <Button
+                    android:id="@+id/btnFavorites"
+                    android:layout_width="110dp"
+                    android:layout_height="70dp"
+                    android:text="Omiljeno"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- FIXED SEARCH BUTTON - 30% WIDTH -->
+        <Button
+            android:id="@+id/btnSearch"
+            android:layout_width="0dp"
+            android:layout_height="70dp"
+            android:layout_weight="0.3"
+            android:text="🔍 Pretraga"
+            android:textSize="16sp"
+            android:layout_margin="5dp"
+            android:background="@drawable/tv_button_focused"
+            android:textColor="@color/white"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </LinearLayout>
+
+    <!-- SEARCH BAR - PRIKAZUJE SE NAKON KLIKA NA PRETRAGU -->
+    <LinearLayout
+        android:id="@+id/searchContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp"
+        android:padding="5dp"
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/searchBar"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:hint="Unesite naziv filma, žanr ili godinu..."
+            android:textColor="@color/white"
+            android:textColorHint="#CCCCCC"
+            android:background="@drawable/tv_button_background"
+            android:padding="15dp"
+            android:textSize="16sp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:singleLine="true" />
+
+        <Button
+            android:id="@+id/btnSearchExecute"
+            android:layout_width="100dp"
+            android:layout_height="60dp"
+            android:text="Traži"
+            android:textSize="14sp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/tv_button_background"
+            android:textColor="@color/white"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <Button
+            android:id="@+id/btnSearchCancel"
+            android:layout_width="100dp"
+            android:layout_height="60dp"
+            android:text="Otkaži"
+            android:textSize="14sp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/tv_button_background"
+            android:textColor="@color/white"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </LinearLayout>
+
+    <!-- LOADING INDICATOR -->
+    <LinearLayout
+        android:id="@+id/loadingContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="20dp"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center" />
+
+        <TextView
+            android:id="@+id/loadingText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Učitavam filmove..."
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:layout_marginTop="10dp" />
+
+    </LinearLayout>
+
+    <!-- CATEGORIES RECYCLER VIEW -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/categoryRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="visible" />
+
+</LinearLayout>

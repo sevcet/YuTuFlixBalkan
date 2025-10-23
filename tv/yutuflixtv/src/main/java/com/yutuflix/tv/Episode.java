@@ -15,3 +15,4 @@ public class Episode {
     public String getImageUrl() { return imageUrl; }
     public String getVideoId() { return videoId; }
 }
+

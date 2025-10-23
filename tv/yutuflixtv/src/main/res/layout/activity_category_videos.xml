@@ -121,6 +121,18 @@
                     android:layout_marginEnd="10dp"
                     android:padding="15dp" />
 
+                <Button
+                    android:id="@+id/btnFavorites"
+                    android:layout_width="110dp"
+                    android:layout_height="70dp"
+                    android:text="Omiljeno"
+                    android:textSize="14sp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/tv_button_background"
+                    android:textColor="@color/white"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
             </LinearLayout>
         </HorizontalScrollView>
 

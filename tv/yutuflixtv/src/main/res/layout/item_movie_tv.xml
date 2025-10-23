@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="180dp"
-    android:layout_height="260dp"
+    android:layout_height="200dp"
     android:orientation="vertical"
-    android:background="@drawable/tv_button_background"
     android:padding="8dp"
+    android:background="@drawable/tv_button_background"
     android:focusable="true"
     android:focusableInTouchMode="true">
 
     <ImageView
         android:id="@+id/movieImage"
         android:layout_width="160dp"
-        android:layout_height="180dp"
+        android:layout_height="120dp"
         android:scaleType="centerCrop"
         android:src="@drawable/placeholder" />
 
@@ -22,19 +22,17 @@
         android:text="Movie Title"
         android:textColor="@color/white"
         android:textSize="14sp"
-        android:gravity="center"
         android:maxLines="2"
         android:ellipsize="end"
-        android:layout_marginTop="6dp" />
+        android:paddingTop="5dp" />
 
     <TextView
         android:id="@+id/movieYear"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="2024"
-        android:textColor="@color/gray"
+        android:textColor="#CCCCCC"
         android:textSize="12sp"
-        android:gravity="center"
-        android:layout_marginTop="2dp" />
+        android:paddingTop="2dp" />
 
 </LinearLayout>

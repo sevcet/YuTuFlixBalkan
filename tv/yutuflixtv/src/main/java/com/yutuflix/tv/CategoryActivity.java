@@ -8,10 +8,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
+
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -25,9 +28,9 @@ public class CategoryActivity extends Activity {
     private List<Movie> movieList = new ArrayList<>();
     private MovieAdapter movieAdapter;
 
-    // BUTTON VARIJABLE
+    // BUTTON VARIJABLE - DODAO FAVORITES
     private Button btnHome, btnSearch, btnDomaciFilmovi, btnDomaceSerije, btnAkcija;
-    private Button btnKomedija, btnHoror, btnSciFi, btnRomansa;
+    private Button btnKomedija, btnHoror, btnSciFi, btnRomansa, btnFavorites;
 
     private String currentCategoryName;
     private String currentXmlUrl;
@@ -56,7 +59,7 @@ public class CategoryActivity extends Activity {
         recyclerView = findViewById(R.id.recyclerView);
         progressBar = findViewById(R.id.progressBar);
 
-        // INIT BUTTONS
+        // INIT BUTTONS - DODAO FAVORITES
         btnHome = findViewById(R.id.btnHome);
         btnSearch = findViewById(R.id.btnSearch);
         btnDomaciFilmovi = findViewById(R.id.btnDomaciFilmovi);
@@ -66,6 +69,7 @@ public class CategoryActivity extends Activity {
         btnHoror = findViewById(R.id.btnHoror);
         btnSciFi = findViewById(R.id.btnSciFi);
         btnRomansa = findViewById(R.id.btnRomansa);
+        btnFavorites = findViewById(R.id.btnFavorites);
     }
 
     private void setupRecyclerView() {
@@ -95,13 +99,17 @@ public class CategoryActivity extends Activity {
             finish();
         });
 
-        // SEARCH BUTTON
+        // SEARCH BUTTON - vrati na MainActivity za pretragu
         btnSearch.setOnClickListener(v -> {
-            String testVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-            Intent intent = new Intent(CategoryActivity.this, PlayerActivity.class);
-            intent.putExtra("videoUrl", testVideoUrl);
-            intent.putExtra("videoTitle", "Search Test Video");
+            Intent intent = new Intent(CategoryActivity.this, MainActivity.class);
             startActivity(intent);
+            finish();
+        });
+
+        // FAVORITES BUTTON
+        btnFavorites.setOnClickListener(v -> {
+            // TODO: Implementiraj FavoritesActivity za TV
+            Toast.makeText(this, "Favorites funkcionalnost će biti dodata uskoro", Toast.LENGTH_SHORT).show();
         });
 
         // CATEGORY BUTTONS
@@ -112,6 +120,37 @@ public class CategoryActivity extends Activity {
         btnHoror.setOnClickListener(v -> openCategory("Horor", "https://sevcet.github.io/exyuflix/horor.xml"));
         btnSciFi.setOnClickListener(v -> openCategory("Sci-Fi", "https://sevcet.github.io/exyuflix/sci_fi.xml"));
         btnRomansa.setOnClickListener(v -> openCategory("Romansa", "https://sevcet.github.io/exyuflix/romansa.xml"));
+
+        // TV FOCUS LISTENERS ZA SVE BUTTONE
+        setupButtonFocusListeners();
+    }
+
+    private void setupButtonFocusListeners() {
+        View.OnFocusChangeListener focusListener = new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    v.setBackgroundResource(R.drawable.tv_button_focused);
+                    v.setScaleX(1.05f);
+                    v.setScaleY(1.05f);
+                } else {
+                    v.setBackgroundResource(R.drawable.tv_button_background);
+                    v.setScaleX(1.0f);
+                    v.setScaleY(1.0f);
+                }
+            }
+        };
+
+        btnHome.setOnFocusChangeListener(focusListener);
+        btnSearch.setOnFocusChangeListener(focusListener);
+        btnFavorites.setOnFocusChangeListener(focusListener);
+        btnDomaciFilmovi.setOnFocusChangeListener(focusListener);
+        btnDomaceSerije.setOnFocusChangeListener(focusListener);
+        btnAkcija.setOnFocusChangeListener(focusListener);
+        btnKomedija.setOnFocusChangeListener(focusListener);
+        btnHoror.setOnFocusChangeListener(focusListener);
+        btnSciFi.setOnFocusChangeListener(focusListener);
+        btnRomansa.setOnFocusChangeListener(focusListener);
     }
 
     private void openCategory(String categoryName, String xmlUrl) {
@@ -145,9 +184,12 @@ public class CategoryActivity extends Activity {
     private void openSeriesDetails(Movie movie) {
         try {
             Intent intent = new Intent(CategoryActivity.this, DetailsActivitySeries.class);
-            // PROSLEĐUJEMO XML URL KATEGORIJE I NASLOV SERIJE
-            intent.putExtra("xmlUrl", currentXmlUrl);
-            intent.putExtra("seriesTitle", movie.getTitle());
+            intent.putExtra("title", movie.getTitle());
+            intent.putExtra("year", movie.getYear());
+            intent.putExtra("genre", movie.getGenre());
+            intent.putExtra("description", movie.getDescription());
+            intent.putExtra("imageUrl", movie.getImageUrl());
+            intent.putExtra("seasonsJson", movie.getSeasonsJson());
             startActivity(intent);
         } catch (Exception e) {
             Toast.makeText(this, "Greška pri otvaranju serije", Toast.LENGTH_SHORT).show();
@@ -184,7 +226,7 @@ public class CategoryActivity extends Activity {
                 String currentTag = null;
 
                 String title = "", year = "", genre = "", type = "film", description = "", imageUrl = "", videoId = "";
-                String seasonsJson = ""; // Za serije
+                String seasonsJson = "";
 
                 while (eventType != XmlPullParser.END_DOCUMENT) {
                     if (eventType == XmlPullParser.START_TAG) {
@@ -206,7 +248,6 @@ public class CategoryActivity extends Activity {
                                 case "description": description = text; break;
                                 case "imageUrl": imageUrl = text; break;
                                 case "videoId": videoId = text; break;
-                                // Parsiranje seasonsJson ako postoji
                                 case "seasonsJson": seasonsJson = text; break;
                             }
                         }

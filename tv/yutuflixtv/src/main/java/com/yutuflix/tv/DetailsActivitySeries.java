@@ -3,7 +3,6 @@ package com.yutuflix.tv;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.GridLayout;
@@ -18,15 +17,6 @@ import com.yutuflix.tv.R;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.xml.sax.Attributes;
-import org.xml.sax.InputSource;
-import org.xml.sax.helpers.DefaultHandler;
-
-import java.io.InputStream;
-import java.net.URL;
-
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
 
 public class DetailsActivitySeries extends Activity {
 
@@ -35,9 +25,14 @@ public class DetailsActivitySeries extends Activity {
     private TextView title, year, genre, desc;
     private GridLayout seasonsContainer;
 
-    private String xmlUrl;
+    private String firstVideoId = null;
+
     private String seriesTitle;
-    private SeriesData currentSeriesData;
+    private String seriesYear;
+    private String seriesGenre;
+    private String seriesDesc;
+    private String seriesImage;
+    private String seasonsJson;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,15 +40,9 @@ public class DetailsActivitySeries extends Activity {
         setContentView(R.layout.activity_details_series_tv);
 
         initViews();
-        loadIntentData();
-
-        // Učitaj podatke iz XML-a
-        if (xmlUrl != null) {
-            new LoadSeriesDataTask().execute(xmlUrl);
-        } else {
-            Toast.makeText(this, "Greška: Nedostaje XML URL", Toast.LENGTH_SHORT).show();
-            finish();
-        }
+        loadSeriesData();
+        setupFavoriteButton();
+        setupEpisodes();
     }
 
     private void initViews() {
@@ -65,79 +54,75 @@ public class DetailsActivitySeries extends Activity {
         desc = findViewById(R.id.detailSeriesDesc);
         seasonsContainer = findViewById(R.id.seasonsContainer);
 
+        // TV optimizacija - fokus
         favoriteButton.setFocusable(true);
         favoriteButton.setFocusableInTouchMode(true);
     }
 
-    private void loadIntentData() {
+    private void loadSeriesData() {
         Intent intent = getIntent();
-        xmlUrl = intent.getStringExtra("xmlUrl");
-        seriesTitle = intent.getStringExtra("seriesTitle");
+        seriesTitle = intent.getStringExtra("title");
+        seriesYear = intent.getStringExtra("year");
+        seriesGenre = intent.getStringExtra("genre");
+        seriesDesc = intent.getStringExtra("description");
+        seriesImage = intent.getStringExtra("imageUrl");
+        seasonsJson = intent.getStringExtra("seasonsJson");
 
-        // Postavi naslov ako je prosleđen
-        if (seriesTitle != null) {
-            title.setText(seriesTitle);
-        }
-    }
-
-    private class LoadSeriesDataTask extends AsyncTask<String, Void, SeriesData> {
-        @Override
-        protected SeriesData doInBackground(String... urls) {
-            try {
-                URL url = new URL(urls[0]);
-                InputStream inputStream = url.openStream();
-
-                SAXParserFactory factory = SAXParserFactory.newInstance();
-                SAXParser parser = factory.newSAXParser();
-
-                SeriesXMLHandler handler = new SeriesXMLHandler(seriesTitle);
-                parser.parse(new InputSource(inputStream), handler);
-
-                return handler.getSeriesData();
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(SeriesData seriesData) {
-            if (seriesData != null) {
-                currentSeriesData = seriesData;
-                updateUIWithSeriesData(seriesData);
-                setupFavoriteButton();
-            } else {
-                Toast.makeText(DetailsActivitySeries.this,
-                        "Greška pri učitavanju podataka serije", Toast.LENGTH_SHORT).show();
-                finish();
-            }
-        }
-    }
-
-    private void updateUIWithSeriesData(SeriesData seriesData) {
-        title.setText(seriesData.getTitle());
-        year.setText("Godina: " + seriesData.getYear());
-        genre.setText("Žanr: " + seriesData.getGenre());
-        desc.setText(seriesData.getDescription());
+        // Postavi osnovne podatke
+        if (seriesTitle != null) title.setText(seriesTitle);
+        if (seriesYear != null) year.setText("Godina: " + seriesYear);
+        if (seriesGenre != null) genre.setText("Žanr: " + seriesGenre);
+        if (seriesDesc != null) desc.setText(seriesDesc);
 
         // Učitaj sliku
-        if (seriesData.getImageUrl() != null && !seriesData.getImageUrl().isEmpty()) {
+        if (seriesImage != null && !seriesImage.isEmpty()) {
             Glide.with(this)
-                    .load(seriesData.getImageUrl())
+                    .load(seriesImage)
                     .placeholder(R.drawable.placeholder)
                     .into(poster);
         }
-
-        // Postavi sezone i epizode
-        setupEpisodes(seriesData.getSeasonsJson());
     }
 
-    private void setupEpisodes(String seasonsJson) {
-        try {
-            // Očisti prethodne epizode
-            seasonsContainer.removeAllViews();
+    private void setupFavoriteButton() {
+        updateFavoriteIcon();
 
+        favoriteButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (FavoritesManager.isFavorite(DetailsActivitySeries.this, seriesTitle)) {
+                    FavoritesManager.removeFavorite(DetailsActivitySeries.this, seriesTitle);
+                    Toast.makeText(DetailsActivitySeries.this, "Uklonjeno iz omiljenih", Toast.LENGTH_SHORT).show();
+                } else {
+                    SeriesItem item = new SeriesItem(
+                            seriesTitle,
+                            seriesYear,
+                            seriesGenre,
+                            seriesDesc,
+                            seriesImage,
+                            seasonsJson
+                    );
+                    FavoritesManager.addFavorite(DetailsActivitySeries.this, item);
+                    Toast.makeText(DetailsActivitySeries.this, "Dodato u omiljene", Toast.LENGTH_SHORT).show();
+                }
+                updateFavoriteIcon();
+            }
+        });
+
+        // TV navigacija - focus listener
+        favoriteButton.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    favoriteButton.setBackgroundResource(R.drawable.tv_button_focused);
+                } else {
+                    favoriteButton.setBackgroundResource(R.drawable.tv_button_background);
+                }
+            }
+        });
+    }
+
+    private void setupEpisodes() {
+        try {
             if (seasonsJson != null && !seasonsJson.isEmpty()) {
                 JSONArray seasonsArray = new JSONArray(seasonsJson);
 
@@ -152,11 +137,16 @@ public class DetailsActivitySeries extends Activity {
                         String epImage = episodeObj.getString("imageUrl");
                         String epVideoId = episodeObj.getString("videoId");
 
+                        if (firstVideoId == null) {
+                            firstVideoId = epVideoId;
+                        }
+
                         LinearLayout epBox = createEpisodeBox(seasonNumber, e + 1, epTitle, epImage, epVideoId);
                         seasonsContainer.addView(epBox);
                     }
                 }
             } else {
+                // Ako nema sezona, prikaži poruku
                 TextView noEpisodesText = new TextView(this);
                 noEpisodesText.setText("Nema dostupnih epizoda");
                 noEpisodesText.setTextColor(Color.WHITE);
@@ -174,11 +164,13 @@ public class DetailsActivitySeries extends Activity {
         LinearLayout epBox = new LinearLayout(this);
         epBox.setOrientation(LinearLayout.VERTICAL);
 
+        // TV optimizacija - veći padding i fokus
         epBox.setPadding(16, 16, 16, 16);
         epBox.setFocusable(true);
         epBox.setFocusableInTouchMode(true);
         epBox.setBackgroundResource(R.drawable.tv_button_background);
 
+        // Layout params za TV
         GridLayout.LayoutParams layoutParams = new GridLayout.LayoutParams();
         layoutParams.width = 0;
         layoutParams.height = GridLayout.LayoutParams.WRAP_CONTENT;
@@ -186,6 +178,7 @@ public class DetailsActivitySeries extends Activity {
         layoutParams.setMargins(8, 8, 8, 8);
         epBox.setLayoutParams(layoutParams);
 
+        // Slika epizode - veća za TV
         ImageView epImg = new ImageView(this);
         LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(400, 225);
         epImg.setLayoutParams(imageParams);
@@ -200,6 +193,7 @@ public class DetailsActivitySeries extends Activity {
             epImg.setImageResource(R.drawable.placeholder);
         }
 
+        // Naslov epizode - veći font za TV
         TextView epLabel = new TextView(this);
         epLabel.setText("S" + seasonNumber + "E" + episodeNumber + " - " + epTitle);
         epLabel.setTextSize(16);
@@ -210,6 +204,7 @@ public class DetailsActivitySeries extends Activity {
         epBox.addView(epImg);
         epBox.addView(epLabel);
 
+        // Klik listener
         final String videoId = epVideoId;
         final String fullEpisodeTitle = "S" + seasonNumber + "E" + episodeNumber + " - " + epTitle;
 
@@ -220,11 +215,13 @@ public class DetailsActivitySeries extends Activity {
             }
         });
 
+        // TV focus listener za highlight
         epBox.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 if (hasFocus) {
                     epBox.setBackgroundResource(R.drawable.tv_button_focused);
+                    // Scale animacija za fokus
                     epBox.setScaleX(1.05f);
                     epBox.setScaleY(1.05f);
                 } else {
@@ -250,48 +247,8 @@ public class DetailsActivitySeries extends Activity {
         }
     }
 
-    private void setupFavoriteButton() {
-        updateFavoriteIcon();
-
-        favoriteButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String currentTitle = title.getText().toString();
-                if (FavoritesManager.isFavorite(DetailsActivitySeries.this, currentTitle)) {
-                    FavoritesManager.removeFavorite(DetailsActivitySeries.this, currentTitle);
-                    Toast.makeText(DetailsActivitySeries.this, "Uklonjeno iz omiljenih", Toast.LENGTH_SHORT).show();
-                } else {
-                    // Kreiraj SeriesItem sa trenutnim podacima
-                    SeriesItem item = new SeriesItem(
-                            currentTitle,
-                            currentSeriesData != null ? currentSeriesData.getYear() : "",
-                            currentSeriesData != null ? currentSeriesData.getGenre() : "",
-                            currentSeriesData != null ? currentSeriesData.getDescription() : "",
-                            currentSeriesData != null ? currentSeriesData.getImageUrl() : "",
-                            currentSeriesData != null ? currentSeriesData.getSeasonsJson() : ""
-                    );
-                    FavoritesManager.addFavorite(DetailsActivitySeries.this, item);
-                    Toast.makeText(DetailsActivitySeries.this, "Dodato u omiljene", Toast.LENGTH_SHORT).show();
-                }
-                updateFavoriteIcon();
-            }
-        });
-
-        favoriteButton.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    favoriteButton.setBackgroundResource(R.drawable.tv_button_focused);
-                } else {
-                    favoriteButton.setBackgroundResource(R.drawable.tv_button_background);
-                }
-            }
-        });
-    }
-
     private void updateFavoriteIcon() {
-        String currentTitle = title.getText().toString();
-        if (currentTitle != null && FavoritesManager.isFavorite(this, currentTitle)) {
+        if (seriesTitle != null && FavoritesManager.isFavorite(this, seriesTitle)) {
             favoriteButton.setImageResource(R.drawable.ic_favorite_filled);
             favoriteButton.setColorFilter(Color.RED);
         } else {
@@ -305,112 +262,11 @@ public class DetailsActivitySeries extends Activity {
         super.onResume();
         updateFavoriteIcon();
 
+        // Fokus na prvi element
         if (seasonsContainer.getChildCount() > 0) {
             seasonsContainer.getChildAt(0).requestFocus();
         } else {
             favoriteButton.requestFocus();
         }
-    }
-}
-
-// POMOĆNE KLASE
-
-class SeriesData {
-    private String title;
-    private String year;
-    private String genre;
-    private String description;
-    private String imageUrl;
-    private String seasonsJson;
-
-    public SeriesData(String title, String year, String genre, String description,
-                      String imageUrl, String seasonsJson) {
-        this.title = title;
-        this.year = year;
-        this.genre = genre;
-        this.description = description;
-        this.imageUrl = imageUrl;
-        this.seasonsJson = seasonsJson;
-    }
-
-    // Getters
-    public String getTitle() { return title; }
-    public String getYear() { return year; }
-    public String getGenre() { return genre; }
-    public String getDescription() { return description; }
-    public String getImageUrl() { return imageUrl; }
-    public String getSeasonsJson() { return seasonsJson; }
-}
-
-class SeriesXMLHandler extends DefaultHandler {
-    private SeriesData seriesData;
-    private String currentValue;
-    private String targetSeriesTitle;
-    private boolean foundSeries = false;
-    private StringBuilder seasonsJsonBuilder;
-    private boolean inSeasonsJson = false;
-    private String currentElement;
-
-    public SeriesXMLHandler(String targetSeriesTitle) {
-        this.targetSeriesTitle = targetSeriesTitle;
-    }
-
-    @Override
-    public void startElement(String uri, String localName, String qName, Attributes attributes) {
-        currentElement = qName;
-        if (qName.equalsIgnoreCase("item")) {
-            // Resetuj za novi item
-            seriesData = new SeriesData("", "", "", "", "", "");
-        } else if (qName.equalsIgnoreCase("seasonsjson")) {
-            inSeasonsJson = true;
-            seasonsJsonBuilder = new StringBuilder();
-        }
-    }
-
-    @Override
-    public void characters(char[] ch, int start, int length) {
-        currentValue = new String(ch, start, length);
-        if (inSeasonsJson && seasonsJsonBuilder != null) {
-            seasonsJsonBuilder.append(currentValue);
-        }
-    }
-
-    @Override
-    public void endElement(String uri, String localName, String qName) {
-        if (foundSeries) return;
-
-        if (seriesData != null) {
-            if (qName.equalsIgnoreCase("title") && !inSeasonsJson) {
-                seriesData = new SeriesData(currentValue, "", "", "", "", "");
-            } else if (qName.equalsIgnoreCase("year") && !inSeasonsJson) {
-                seriesData = new SeriesData(seriesData.getTitle(), currentValue, "", "", "", "");
-            } else if (qName.equalsIgnoreCase("genre") && !inSeasonsJson) {
-                seriesData = new SeriesData(seriesData.getTitle(), seriesData.getYear(), currentValue, "", "", "");
-            } else if (qName.equalsIgnoreCase("description") && !inSeasonsJson) {
-                seriesData = new SeriesData(seriesData.getTitle(), seriesData.getYear(),
-                        seriesData.getGenre(), currentValue, "", "");
-            } else if (qName.equalsIgnoreCase("imageurl") && !inSeasonsJson) {
-                seriesData = new SeriesData(seriesData.getTitle(), seriesData.getYear(),
-                        seriesData.getGenre(), seriesData.getDescription(), currentValue, "");
-            } else if (qName.equalsIgnoreCase("seasonsjson")) {
-                inSeasonsJson = false;
-                if (seasonsJsonBuilder != null) {
-                    SeriesData finalData = new SeriesData(seriesData.getTitle(), seriesData.getYear(),
-                            seriesData.getGenre(), seriesData.getDescription(),
-                            seriesData.getImageUrl(), seasonsJsonBuilder.toString());
-
-                    // Proveri da li je ovo tražena serija
-                    if (targetSeriesTitle != null &&
-                            targetSeriesTitle.equalsIgnoreCase(finalData.getTitle())) {
-                        seriesData = finalData;
-                        foundSeries = true;
-                    }
-                }
-            }
-        }
-    }
-
-    public SeriesData getSeriesData() {
-        return foundSeries ? seriesData : null;
     }
 }
