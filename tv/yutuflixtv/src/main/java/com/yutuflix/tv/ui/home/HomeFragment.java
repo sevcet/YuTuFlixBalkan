@@ -7,14 +7,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import androidx.fragment.app.Fragment;
+
+import com.yutuflix.tv.CategoryActivity;
 import com.yutuflix.tv.PlayerActivity;
 import com.yutuflix.tv.R;
 import com.yutuflix.tv.ui.search.SearchFragment;
-import com.yutuflix.tv.ui.categories.CategoriesFragment;
 
 public class HomeFragment extends Fragment {
 
-    private Button btnHome, btnSearch, btnCategories;
+    private Button btnHome, btnSearch, btnDomaciFilmovi, btnDomaceSerije, btnAkcija;
+    private Button btnKomedija, btnHoror, btnSciFi, btnRomansa;
+    private Button testVideo;
 
     public HomeFragment() {
         // Required empty public constructor
@@ -25,19 +28,30 @@ public class HomeFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_home_tv, container, false);
 
-        btnHome = view.findViewById(R.id.btnHome);
-        btnSearch = view.findViewById(R.id.btnSearch);
-        btnCategories = view.findViewById(R.id.btnCategories);
-
+        initViews(view);
         setupNavigation();
-        setupSampleVideo(); // Dodaj sample video za test
+        setupCategoryButtons();
+        setupTestVideo();
 
         return view;
     }
 
+    private void initViews(View view) {
+        btnHome = view.findViewById(R.id.btnHome);
+        btnSearch = view.findViewById(R.id.btnSearch);
+        btnDomaciFilmovi = view.findViewById(R.id.btnDomaciFilmovi);
+        btnDomaceSerije = view.findViewById(R.id.btnDomaceSerije);
+        btnAkcija = view.findViewById(R.id.btnAkcija);
+        btnKomedija = view.findViewById(R.id.btnKomedija);
+        btnHoror = view.findViewById(R.id.btnHoror);
+        btnSciFi = view.findViewById(R.id.btnSciFi);
+        btnRomansa = view.findViewById(R.id.btnRomansa);
+        testVideo = view.findViewById(R.id.testVideo);
+    }
+
     private void setupNavigation() {
         btnHome.setOnClickListener(v -> {
-            // Već smo na home
+            // Već smo na home - možda osvežiti sadržaj
         });
 
         btnSearch.setOnClickListener(v -> {
@@ -47,40 +61,35 @@ public class HomeFragment extends Fragment {
                     .addToBackStack(null)
                     .commit();
         });
-
-        btnCategories.setOnClickListener(v -> {
-            CategoriesFragment categoriesFragment = new CategoriesFragment();
-            getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, categoriesFragment)
-                    .addToBackStack(null)
-                    .commit();
-        });
     }
 
-    private void setupSampleVideo() {
-        // Pronađi TextView i postavi klik listener
-        View view = getView();
-        if (view != null) {
-            View testVideo = view.findViewById(R.id.testVideo);
-            if (testVideo != null) {
-                testVideo.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        // Koristi javni test video URL koji radi na svim uređajima
-                        String testVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-                        String testTitle = "Test Video";
+    private void setupCategoryButtons() {
+        // Postavi klik listenere za sve kategorije
+        btnDomaciFilmovi.setOnClickListener(v -> openCategory("Domaci Filmovi", "https://sevcet.github.io/exyuflix/domaci_filmovi.xml"));
+        btnDomaceSerije.setOnClickListener(v -> openCategory("Domace Serije", "https://sevcet.github.io/exyuflix/domace_serije.xml"));
+        btnAkcija.setOnClickListener(v -> openCategory("Akcija", "https://sevcet.github.io/exyuflix/akcija.xml"));
+        btnKomedija.setOnClickListener(v -> openCategory("Komedija", "https://sevcet.github.io/exyuflix/komedija.xml"));
+        btnHoror.setOnClickListener(v -> openCategory("Horor", "https://sevcet.github.io/exyuflix/horor.xml"));
+        btnSciFi.setOnClickListener(v -> openCategory("Sci-Fi", "https://sevcet.github.io/exyuflix/sci_fi.xml"));
+        btnRomansa.setOnClickListener(v -> openCategory("Romansa", "https://sevcet.github.io/exyuflix/romansa.xml"));
+    }
 
-                        Intent intent = new Intent(getActivity(), PlayerActivity.class);
-                        intent.putExtra("videoUrl", testVideoUrl);
-                        intent.putExtra("videoTitle", testTitle);
-                        startActivity(intent);
-                    }
-                });
+    private void openCategory(String categoryName, String xmlUrl) {
+        Intent intent = new Intent(getActivity(), CategoryActivity.class);
+        intent.putExtra("categoryName", categoryName);
+        intent.putExtra("xmlUrl", xmlUrl);
+        startActivity(intent);
+    }
 
-                // Fokus za TV navigaciju
-                testVideo.setFocusable(true);
-                testVideo.setFocusableInTouchMode(true);
-            }
-        }
+    private void setupTestVideo() {
+        testVideo.setOnClickListener(v -> {
+            String testVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+            String testTitle = "Test Video";
+
+            Intent intent = new Intent(getActivity(), PlayerActivity.class);
+            intent.putExtra("videoUrl", testVideoUrl);
+            intent.putExtra("videoTitle", testTitle);
+            startActivity(intent);
+        });
     }
 }

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/black"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="20dp">
+
+        <ImageView
+            android:id="@+id/detailSeriesImage"
+            android:layout_width="300dp"
+            android:layout_height="400dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/placeholder"
+            android:layout_marginEnd="20dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/detailSeriesTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Serija Title"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="10dp" />
+
+            <TextView
+                android:id="@+id/detailSeriesYear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Godina: 2024"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:layout_marginBottom="5dp" />
+
+            <TextView
+                android:id="@+id/detailSeriesGenre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Žanr: Drama"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:layout_marginBottom="10dp" />
+
+            <TextView
+                android:id="@+id/detailSeriesDesc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Opis serije..."
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginBottom="20dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- SEZONE I EPIZODE -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sezone i Epizode"
+        android:textColor="@color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="15dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/seasonsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
+
+</LinearLayout>
