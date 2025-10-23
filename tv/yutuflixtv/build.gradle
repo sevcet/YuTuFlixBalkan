@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace 'com.yutuflix.tv'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.yutuflix.tv"
@@ -31,7 +31,7 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.leanback:leanback:1.0.0' // PROMENI U 1.0.0
+    implementation 'androidx.leanback:leanback:1.2.0' // PROMENI U 1.0.0
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'

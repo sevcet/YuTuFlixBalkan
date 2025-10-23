@@ -145,14 +145,9 @@ public class CategoryActivity extends Activity {
     private void openSeriesDetails(Movie movie) {
         try {
             Intent intent = new Intent(CategoryActivity.this, DetailsActivitySeries.class);
-            intent.putExtra("title", movie.getTitle());
-            intent.putExtra("year", movie.getYear());
-            intent.putExtra("genre", movie.getGenre());
-            intent.putExtra("description", movie.getDescription());
-            intent.putExtra("imageUrl", movie.getImageUrl());
-            intent.putExtra("videoId", movie.getVideoId());
-            // Za sada šaljemo null za seasonsJson, kasnije ćemo parsirati
-            intent.putExtra("seasonsJson", "");
+            // PROSLEĐUJEMO XML URL KATEGORIJE I NASLOV SERIJE
+            intent.putExtra("xmlUrl", currentXmlUrl);
+            intent.putExtra("seriesTitle", movie.getTitle());
             startActivity(intent);
         } catch (Exception e) {
             Toast.makeText(this, "Greška pri otvaranju serije", Toast.LENGTH_SHORT).show();
@@ -211,13 +206,14 @@ public class CategoryActivity extends Activity {
                                 case "description": description = text; break;
                                 case "imageUrl": imageUrl = text; break;
                                 case "videoId": videoId = text; break;
-                                // Dodaj parsiranje za sezone ako postoje u XML-u
+                                // Parsiranje seasonsJson ako postoji
+                                case "seasonsJson": seasonsJson = text; break;
                             }
                         }
                     } else if (eventType == XmlPullParser.END_TAG) {
                         if ("movie".equals(parser.getName())) {
                             // Kraj filma - dodaj u listu
-                            if (!title.isEmpty() && !videoId.isEmpty()) {
+                            if (!title.isEmpty()) {
                                 Movie movie = new Movie(title, year, genre, type, description, imageUrl, videoId, null, seasonsJson);
                                 movies.add(movie);
                             }

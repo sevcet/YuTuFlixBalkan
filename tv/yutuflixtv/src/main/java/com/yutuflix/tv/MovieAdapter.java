@@ -1,6 +1,7 @@
 package com.yutuflix.tv;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,6 +49,22 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
             holder.imageView.setImageResource(R.drawable.placeholder);
         }
 
+        // TV FOCUS EFFECT
+        holder.itemView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    holder.itemView.setBackgroundResource(R.drawable.tv_button_focused);
+                    holder.itemView.setScaleX(1.05f);
+                    holder.itemView.setScaleY(1.05f);
+                } else {
+                    holder.itemView.setBackgroundResource(R.drawable.tv_button_background);
+                    holder.itemView.setScaleX(1.0f);
+                    holder.itemView.setScaleY(1.0f);
+                }
+            }
+        });
+
         // Klik listener
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -78,6 +95,9 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
             imageView = itemView.findViewById(R.id.movieImage);
             titleText = itemView.findViewById(R.id.movieTitle);
             yearText = itemView.findViewById(R.id.movieYear);
+
+            // Postavi background za TV fokus
+            itemView.setBackgroundResource(R.drawable.tv_button_background);
         }
     }
 }
