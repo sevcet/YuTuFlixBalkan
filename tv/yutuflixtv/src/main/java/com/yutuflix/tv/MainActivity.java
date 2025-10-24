@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -37,13 +38,14 @@ public class MainActivity extends Activity {
     private TextView loadingText;
     private EditText searchBar;
     private LinearLayout searchContainer;
-    private Button btnSearchExecute, btnSearchCancel;
 
-    // BUTTON VARIJABLE - DODAO SAM FAVORITES
+    // BUTTON VARIJABLE
     private Button btnHome, btnSearch, btnDomaciFilmovi, btnDomaceSerije, btnAkcija;
     private Button btnKomedija, btnHoror, btnSciFi, btnRomansa, btnFavorites;
 
     private String xmlUrl = "https://sevcet.github.io/yutuflixapp.xml";
+    private boolean isSearchActive = false;
+    private boolean isShowingSearchResults = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +54,7 @@ public class MainActivity extends Activity {
 
         initViews();
         setupButtonNavigation();
+        setupSearchBar();
         setupRecyclerView();
 
         // Učitaj podatke
@@ -67,10 +70,8 @@ public class MainActivity extends Activity {
 
         // Search container
         searchContainer = findViewById(R.id.searchContainer);
-        btnSearchExecute = findViewById(R.id.btnSearchExecute);
-        btnSearchCancel = findViewById(R.id.btnSearchCancel);
 
-        // INIT BUTTONS - DODAO FAVORITES
+        // INIT BUTTONS
         btnHome = findViewById(R.id.btnHome);
         btnSearch = findViewById(R.id.btnSearch);
         btnDomaciFilmovi = findViewById(R.id.btnDomaciFilmovi);
@@ -81,6 +82,46 @@ public class MainActivity extends Activity {
         btnSciFi = findViewById(R.id.btnSciFi);
         btnRomansa = findViewById(R.id.btnRomansa);
         btnFavorites = findViewById(R.id.btnFavorites);
+    }
+
+    private void setupSearchBar() {
+        // Postavi key listener za Enter (OK dugme na daljinskom)
+        searchBar.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+                        // Enter/OK dugme - izvrši pretragu
+                        String query = searchBar.getText().toString().trim();
+                        if (!query.isEmpty()) {
+                            performSearch(query);
+                        } else {
+                            Toast.makeText(MainActivity.this, "Unesite termin za pretragu", Toast.LENGTH_SHORT).show();
+                        }
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_BACK) {
+                        // Back dugme - zatvori search
+                        hideSearch();
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
+        // Fokus listener za search bar
+        searchBar.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    searchBar.setBackgroundResource(R.drawable.tv_button_focused);
+                    // Automatski otvori tastaturu kada search bar dobije fokus
+                    showKeyboard();
+                } else {
+                    searchBar.setBackgroundResource(R.drawable.tv_edittext_background);
+                }
+            }
+        });
     }
 
     private void setupRecyclerView() {
@@ -107,7 +148,7 @@ public class MainActivity extends Activity {
 
         // SEARCH BUTTON - toggle search bar
         btnSearch.setOnClickListener(v -> {
-            if (searchContainer.getVisibility() == View.VISIBLE) {
+            if (isSearchActive) {
                 hideSearch();
             } else {
                 showSearch();
@@ -119,23 +160,6 @@ public class MainActivity extends Activity {
             hideSearch();
             // TODO: Implementiraj FavoritesActivity za TV
             Toast.makeText(this, "Favorites funkcionalnost će biti dodata uskoro", Toast.LENGTH_SHORT).show();
-        });
-
-        // EXECUTE SEARCH
-        btnSearchExecute.setOnClickListener(v -> {
-            String query = searchBar.getText().toString().trim();
-            if (query.isEmpty()) {
-                Toast.makeText(this, "Unesite termin za pretragu", Toast.LENGTH_SHORT).show();
-            } else {
-                performSearch(query);
-            }
-        });
-
-        // CANCEL SEARCH
-        btnSearchCancel.setOnClickListener(v -> {
-            hideSearch();
-            // Vrati na originalne podatke
-            new LoadXmlTask().execute(xmlUrl);
         });
 
         // CATEGORY BUTTONS - OTVARAJU CATEGORY ACTIVITY SA ODGOVARAJUĆIM XML-OM
@@ -207,17 +231,39 @@ public class MainActivity extends Activity {
     }
 
     private void showSearch() {
+        isSearchActive = true;
         searchContainer.setVisibility(View.VISIBLE);
-        // Postavi fokus na search bar
+        // Postavi fokus na search bar sa malim delay-om
         searchBar.postDelayed(() -> {
             searchBar.requestFocus();
+            searchBar.selectAll(); // Selektuj sav tekst
         }, 100);
     }
 
     private void hideSearch() {
+        isSearchActive = false;
         searchContainer.setVisibility(View.GONE);
         searchBar.setText("");
-        // Sakrij soft keyboard ako je otvoren
+        hideKeyboard();
+
+        // Vrati fokus na prvi button
+        btnHome.postDelayed(() -> {
+            btnHome.requestFocus();
+        }, 100);
+
+        // SAMO ako prikazujemo rezultate pretrage, vrati na originalne podatke
+        if (isShowingSearchResults) {
+            isShowingSearchResults = false;
+            new LoadXmlTask().execute(xmlUrl);
+        }
+    }
+
+    private void showKeyboard() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT);
+    }
+
+    private void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(searchBar.getWindowToken(), 0);
     }
@@ -244,7 +290,26 @@ public class MainActivity extends Activity {
             categoryAdapter.notifyDataSetChanged();
 
             Toast.makeText(this, "Pronađeno " + searchResults.size() + " rezultata", Toast.LENGTH_SHORT).show();
+
+            // Oznaci da prikazujemo rezultate pretrage
+            isShowingSearchResults = true;
+
+            // Sakrij search UI ali NE ucitavaj originalne podatke
+            hideSearchUIOnly();
         }
+    }
+
+    // NOVA METODA: Sakrij samo search UI bez ponovnog ucitavanja podataka
+    private void hideSearchUIOnly() {
+        isSearchActive = false;
+        searchContainer.setVisibility(View.GONE);
+        searchBar.setText("");
+        hideKeyboard();
+
+        // Vrati fokus na prvi button
+        btnHome.postDelayed(() -> {
+            btnHome.requestFocus();
+        }, 100);
     }
 
     // OTVARA CATEGORY ACTIVITY SA ODGOVARAJUĆIM XML-OM
@@ -285,6 +350,23 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Greška pri otvaranju serije", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Global back button handling
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (isSearchActive) {
+                hideSearch();
+                return true;
+            } else if (isShowingSearchResults) {
+                // Ako prikazujemo rezultate pretrage, back dugme treba da vrati na originalne podatke
+                isShowingSearchResults = false;
+                new LoadXmlTask().execute(xmlUrl);
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     private class LoadXmlTask extends AsyncTask<String, Void, List<CategoryData>> {
