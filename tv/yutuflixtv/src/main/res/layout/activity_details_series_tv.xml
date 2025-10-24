@@ -3,117 +3,133 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/black"
-    android:padding="20dp">
+    android:background="@color/black">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="20dp">
-
-        <ImageView
-            android:id="@+id/detailSeriesImage"
-            android:layout_width="300dp"
-            android:layout_height="400dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/placeholder"
-            android:layout_marginEnd="20dp" />
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="16dp">
 
-            <!-- Title i Favorite dugme u istom redu -->
+            <!-- POSTER I OPIS -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="20dp">
 
-                <TextView
-                    android:id="@+id/detailSeriesTitle"
+                <ImageView
+                    android:id="@+id/detailSeriesImage"
+                    android:layout_width="200dp"
+                    android:layout_height="280dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/placeholder"
+                    android:layout_marginEnd="16dp" />
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Serija Title"
-                    android:textColor="@color/white"
-                    android:textSize="24sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical">
 
-                <ImageButton
-                    android:id="@+id/favoriteIconSeries"
-                    android:layout_width="50dp"
-                    android:layout_height="50dp"
-                    android:background="@drawable/tv_button_background"
-                    android:src="@drawable/ic_favorite_border"
-                    android:scaleType="centerInside"
-                    android:padding="8dp"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true" />
+                    <!-- Title i Favorite dugme u istom redu -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:id="@+id/detailSeriesTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Serija Title"
+                            android:textColor="@color/white"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end" />
+
+                        <ImageButton
+                            android:id="@+id/favoriteIconSeries"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="@drawable/tv_button_background"
+                            android:src="@drawable/ic_favorite_border"
+                            android:scaleType="centerInside"
+                            android:padding="6dp"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/detailSeriesYear"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Godina: 2024"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:id="@+id/detailSeriesGenre"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Žanr: Drama"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:id="@+id/detailSeriesDesc"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Opis serije..."
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="2dp"
+                        android:maxLines="6"
+                        android:ellipsize="end"
+                        android:layout_marginBottom="16dp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
+            <!-- SEZONE I EPIZODE -->
             <TextView
-                android:id="@+id/detailSeriesYear"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Godina: 2024"
-                android:textColor="@color/white"
-                android:textSize="18sp"
-                android:layout_marginBottom="5dp" />
-
-            <TextView
-                android:id="@+id/detailSeriesGenre"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Žanr: Drama"
-                android:textColor="@color/white"
-                android:textSize="18sp"
-                android:layout_marginBottom="10dp" />
-
-            <TextView
-                android:id="@+id/detailSeriesDesc"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Opis serije..."
+                android:text="Sezone i Epizode"
                 android:textColor="@color/white"
                 android:textSize="16sp"
-                android:lineSpacingExtra="4dp"
-                android:layout_marginBottom="20dp" />
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"
+                android:padding="4dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/white"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:id="@+id/seasonsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="4dp" />
 
         </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- SEZONE I EPIZODE -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Sezone i Epizode"
-        android:textColor="@color/white"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="15dp" />
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <!-- GridLayout za epizode -->
-        <GridLayout
-            android:id="@+id/seasonsContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:columnCount="4"
-            android:rowCount="0"
-            android:padding="10dp"
-            android:alignmentMode="alignBounds"
-            android:columnOrderPreserved="false" />
 
     </ScrollView>
 

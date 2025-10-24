@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -129,7 +130,16 @@ public class MainActivity extends Activity {
         categoryAdapter = new CategoryAdapter(this, categories, new CategoryAdapter.OnMovieClickListener() {
             @Override
             public void onMovieClick(Movie movie) {
-                if ("serija".equalsIgnoreCase(movie.getType()) || "series".equalsIgnoreCase(movie.getType())) {
+                // Proveri da li je serija - po tipu ili po postojanju seasonsJson
+                boolean isSeries = "serija".equalsIgnoreCase(movie.getType()) ||
+                        "series".equalsIgnoreCase(movie.getType());
+
+                Log.d("MOVIE_CLICK", "Title: " + movie.getTitle() +
+                        ", Type: " + movie.getType() +
+                        ", SeasonsJson: " + (movie.getSeasonsJson() != null ? movie.getSeasonsJson().length() : 0) +
+                        ", IsSeries: " + isSeries);
+
+                if (isSeries) {
                     openSeriesDetails(movie);
                 } else {
                     openFilmDetails(movie);
@@ -338,6 +348,9 @@ public class MainActivity extends Activity {
 
     private void openSeriesDetails(Movie movie) {
         try {
+            Log.d("SERIES_DEBUG", "Opening series: " + movie.getTitle());
+            Log.d("SERIES_DEBUG", "SeasonsJson length: " + (movie.getSeasonsJson() != null ? movie.getSeasonsJson().length() : 0));
+
             Intent intent = new Intent(MainActivity.this, DetailsActivitySeries.class);
             intent.putExtra("title", movie.getTitle());
             intent.putExtra("year", movie.getYear());
@@ -403,6 +416,11 @@ public class MainActivity extends Activity {
 
                 String title = "", year = "", genre = "", type = "film", description = "", imageUrl = "", videoId = "";
                 String seasonsJson = "";
+                boolean inSeasonsJson = false;
+                StringBuilder seasonsJsonBuilder = new StringBuilder();
+
+                int movieCount = 0;
+                int seriesCount = 0;
 
                 while (eventType != XmlPullParser.END_DOCUMENT) {
                     if (eventType == XmlPullParser.START_TAG) {
@@ -410,30 +428,73 @@ public class MainActivity extends Activity {
                         if ("category".equals(currentTag)) {
                             currentCategory = parser.getAttributeValue(null, "name");
                             if (currentCategory == null) currentCategory = "";
+                            Log.d("XML_PARSER", "Category: " + currentCategory);
                         } else if ("movie".equals(currentTag)) {
                             // Resetuj podatke
                             title = ""; year = ""; genre = ""; type = "film";
                             description = ""; imageUrl = ""; videoId = "";
                             seasonsJson = "";
+                            inSeasonsJson = false;
+                            seasonsJsonBuilder = new StringBuilder();
+                        } else if ("seasonsJson".equals(currentTag)) {
+                            inSeasonsJson = true;
+                            seasonsJsonBuilder = new StringBuilder();
+                            Log.d("XML_PARSER", "Started seasonsJson tag for: " + title);
                         }
                     } else if (eventType == XmlPullParser.TEXT) {
                         if (currentTag != null) {
-                            String text = parser.getText();
-                            switch (currentTag) {
-                                case "title": title = text; break;
-                                case "year": year = text; break;
-                                case "genre": genre = text; break;
-                                case "type": type = text; break;
-                                case "description": description = text; break;
-                                case "imageUrl": imageUrl = text; break;
-                                case "videoId": videoId = text; break;
-                                case "seasonsJson": seasonsJson = text; break;
+                            String text = parser.getText().trim();
+                            if (inSeasonsJson) {
+                                // Sakupljaj tekst unutar seasonsJson taga
+                                if (!text.isEmpty()) {
+                                    seasonsJsonBuilder.append(text);
+                                    Log.d("XML_PARSER", "Added to seasonsJson: " + text.length() + " chars");
+                                }
+                            } else {
+                                // Obični tagovi
+                                switch (currentTag) {
+                                    case "title":
+                                        title = text;
+                                        break;
+                                    case "year":
+                                        year = text;
+                                        break;
+                                    case "genre":
+                                        genre = text;
+                                        break;
+                                    case "type":
+                                        type = text;
+                                        break;
+                                    case "description":
+                                        description = text;
+                                        break;
+                                    case "imageUrl":
+                                        imageUrl = text;
+                                        break;
+                                    case "videoId":
+                                        videoId = text;
+                                        break;
+                                }
                             }
                         }
                     } else if (eventType == XmlPullParser.END_TAG) {
-                        if ("movie".equals(parser.getName())) {
+                        if ("seasonsJson".equals(parser.getName())) {
+                            inSeasonsJson = false;
+                            seasonsJson = seasonsJsonBuilder.toString().trim();
+                            Log.d("XML_PARSER", "Finished seasonsJson for: " + title + ", length: " + seasonsJson.length());
+                            if (!seasonsJson.isEmpty()) {
+                                Log.d("XML_PARSER", "First 50 chars: " + seasonsJson.substring(0, Math.min(seasonsJson.length(), 50)));
+                            }
+                        } else if ("movie".equals(parser.getName())) {
                             // Kraj filma - dodaj u listu
                             if (!title.isEmpty()) {
+                                movieCount++;
+
+                                // DEBUG: Ispisi podatke o filmu/seriji
+                                Log.d("XML_PARSER", "Movie " + movieCount + ": " + title +
+                                        " | Type: " + type +
+                                        " | SeasonsJson: " + (!seasonsJson.isEmpty() ? "YES (" + seasonsJson.length() + " chars)" : "NO"));
+
                                 Movie movie = new Movie(title, year, genre, type, description, imageUrl, videoId, null, seasonsJson);
                                 moviesList.add(movie);
 
@@ -452,6 +513,9 @@ public class MainActivity extends Activity {
                                     categoryMovies.add(movie);
                                     categoryList.add(new CategoryData(currentCategory, categoryMovies));
                                 }
+
+                                // Resetuj seasonsJson za sledeći film
+                                seasonsJson = "";
                             }
                         }
                         currentTag = null;
@@ -461,6 +525,9 @@ public class MainActivity extends Activity {
 
                 inputStream.close();
 
+                Log.d("XML_PARSER", "Total movies parsed: " + movieCount);
+                Log.d("XML_PARSER", "Total series detected: " + seriesCount);
+
                 // Ako nema kategorija, napravi jednu opštu kategoriju
                 if (categoryList.isEmpty() && !moviesList.isEmpty()) {
                     categoryList.add(new CategoryData("Svi filmovi", moviesList));
@@ -469,6 +536,7 @@ public class MainActivity extends Activity {
                 return categoryList;
 
             } catch (Exception e) {
+                Log.e("XML_PARSER", "Error parsing XML: " + e.getMessage(), e);
                 e.printStackTrace();
                 return null;
             }
@@ -486,17 +554,30 @@ public class MainActivity extends Activity {
 
                 // Popuni allMovies za pretragu
                 allMovies.clear();
+                int totalSeries = 0;
                 for (CategoryData category : categories) {
                     allMovies.addAll(category.getMovies());
+                    // Prebroj serije
+                    for (Movie movie : category.getMovies()) {
+                        if ("serija".equalsIgnoreCase(movie.getType()) || "series".equalsIgnoreCase(movie.getType())) {
+                            totalSeries++;
+                        }
+                    }
                 }
 
                 categoryAdapter.notifyDataSetChanged();
 
                 Toast.makeText(MainActivity.this,
-                        "Učitano " + categories.size() + " kategorija sa " + allMovies.size() + " filmova",
+                        "Učitano " + categories.size() + " kategorija sa " + allMovies.size() + " filmova (" + totalSeries + " serija)",
                         Toast.LENGTH_SHORT).show();
+
+                Log.d("LOAD_RESULT", "Total categories: " + categories.size());
+                Log.d("LOAD_RESULT", "Total movies: " + allMovies.size());
+                Log.d("LOAD_RESULT", "Total series: " + totalSeries);
+
             } else {
                 Toast.makeText(MainActivity.this, "Nema video sadržaja", Toast.LENGTH_LONG).show();
+                Log.e("LOAD_RESULT", "Failed to load any content");
             }
         }
     }
