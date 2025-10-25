@@ -35,9 +35,10 @@ public class CategoryActivity extends Activity {
     private List<Movie> allMovies = new ArrayList<>(); // Za pretragu
     private MovieAdapter movieAdapter;
 
-    // BUTTON VARIJABLE
+    // BUTTON VARIJABLE - KOMPLETNA LISTA
     private Button btnHome, btnSearch, btnDomaciFilmovi, btnDomaceSerije, btnAkcija;
-    private Button btnKomedija, btnHoror, btnSciFi, btnRomansa, btnFavorites;
+    private Button btnKomedija, btnHoror, btnSciFi, btnRomansa, btnMisterija, btnDokumentarni;
+    private Button btnAnimirani, btnFavorites, btnAbout, btnPrivacy, btnShare;
 
     // SEARCH VARIJABLE
     private EditText searchBar;
@@ -77,7 +78,7 @@ public class CategoryActivity extends Activity {
         searchBar = findViewById(R.id.searchBar);
         searchContainer = findViewById(R.id.searchContainer);
 
-        // INIT BUTTONS
+        // INIT BUTTONS - SVI BUTTONI
         btnHome = findViewById(R.id.btnHome);
         btnSearch = findViewById(R.id.btnSearch);
         btnDomaciFilmovi = findViewById(R.id.btnDomaciFilmovi);
@@ -87,7 +88,13 @@ public class CategoryActivity extends Activity {
         btnHoror = findViewById(R.id.btnHoror);
         btnSciFi = findViewById(R.id.btnSciFi);
         btnRomansa = findViewById(R.id.btnRomansa);
+        btnMisterija = findViewById(R.id.btnMisterija);
+        btnDokumentarni = findViewById(R.id.btnDokumentarni);
+        btnAnimirani = findViewById(R.id.btnAnimirani);
         btnFavorites = findViewById(R.id.btnFavorites);
+        btnAbout = findViewById(R.id.btnAbout);
+        btnPrivacy = findViewById(R.id.btnPrivacy);
+        btnShare = findViewById(R.id.btnShare);
     }
 
     private void setupSearchBar() {
@@ -143,6 +150,7 @@ public class CategoryActivity extends Activity {
     }
 
     private void setupButtonNavigation() {
+        // HOME BUTTON - vrati na MainActivity
         btnHome.setOnClickListener(v -> {
             hideSearch();
             Intent intent = new Intent(CategoryActivity.this, MainActivity.class);
@@ -151,6 +159,7 @@ public class CategoryActivity extends Activity {
             finish();
         });
 
+        // SEARCH BUTTON - toggle search bar
         btnSearch.setOnClickListener(v -> {
             if (isSearchActive) {
                 hideSearch();
@@ -159,42 +168,115 @@ public class CategoryActivity extends Activity {
             }
         });
 
+        // FAVORITES BUTTON - OTVARA FAVORITES ACTIVITY
         btnFavorites.setOnClickListener(v -> {
             hideSearch();
-            Toast.makeText(this, "Favorites funkcionalnost će biti dodata uskoro", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(CategoryActivity.this, FavoritesActivity.class);
+            startActivity(intent);
         });
 
-        // CATEGORY BUTTONS
+        // ABOUT BUTTON - prikaži about dialog
+        btnAbout.setOnClickListener(v -> {
+            hideSearch();
+            showAboutDialog();
+        });
+
+        // PRIVACY BUTTON - OTVARA PRIVACY ACTIVITY
+        btnPrivacy.setOnClickListener(v -> {
+            hideSearch();
+            Intent intent = new Intent(CategoryActivity.this, PrivacyActivity.class);
+            startActivity(intent);
+        });
+
+        // SHARE BUTTON - deli aplikaciju
+        btnShare.setOnClickListener(v -> {
+            hideSearch();
+            shareApp();
+        });
+
+        // CATEGORY BUTTONS - OTVARAJU CATEGORY ACTIVITY
         btnDomaciFilmovi.setOnClickListener(v -> {
             hideSearch();
             openCategory("Domaci Filmovi", "https://sevcet.github.io/exyuflix/domaci_filmovi.xml");
         });
+
         btnDomaceSerije.setOnClickListener(v -> {
             hideSearch();
             openCategory("Domace Serije", "https://sevcet.github.io/exyuflix/domace_serije.xml");
         });
+
         btnAkcija.setOnClickListener(v -> {
             hideSearch();
             openCategory("Akcija", "https://sevcet.github.io/exyuflix/akcija.xml");
         });
+
         btnKomedija.setOnClickListener(v -> {
             hideSearch();
             openCategory("Komedija", "https://sevcet.github.io/exyuflix/komedija.xml");
         });
+
         btnHoror.setOnClickListener(v -> {
             hideSearch();
             openCategory("Horor", "https://sevcet.github.io/exyuflix/horor.xml");
         });
+
         btnSciFi.setOnClickListener(v -> {
             hideSearch();
             openCategory("Sci-Fi", "https://sevcet.github.io/exyuflix/sci_fi.xml");
         });
+
         btnRomansa.setOnClickListener(v -> {
             hideSearch();
             openCategory("Romansa", "https://sevcet.github.io/exyuflix/romansa.xml");
         });
 
+        btnMisterija.setOnClickListener(v -> {
+            hideSearch();
+            openCategory("Misterija", "https://sevcet.github.io/exyuflix/misterija.xml");
+        });
+
+        btnDokumentarni.setOnClickListener(v -> {
+            hideSearch();
+            openCategory("Dokumentarni", "https://sevcet.github.io/exyuflix/dokumentarni.xml");
+        });
+
+        btnAnimirani.setOnClickListener(v -> {
+            hideSearch();
+            openCategory("Animirani", "https://sevcet.github.io/exyuflix/animirani.xml");
+        });
+
         setupButtonFocusListeners();
+    }
+
+    private void showAboutDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("O aplikaciji");
+        builder.setMessage("Tehnički Preglednik Sadržaja\n\n" +
+                "Ova aplikacija funkcioniše kao video agregator koji koristi YouTube embed API za prikaz sadržaja. Svi metapodaci (metadata) se dinamički učitavaju sa eksternih XML izvora.\n\n" +
+                        "🔄 Tehnička Arhitektura:\n" +
+                        "• Metadata: GitHub Pages XML feedovi\n" +
+                        "• Video streaming: YouTube official embed player\n" +
+                        "• Lokalno skladištenje: Omiljeni sadržaji\n\n" +
+                        "📺 Način Rada:\n" +
+                        "Aplikacija ne hostira nikakav video sadržaj. Svi video zapisi se reprodukuju direktno sa YouTube servera putem službenog embed sistema, uz poštovanje autorskih prava i uslova korišćenja.\n\n" +
+                        "⚖️ Pravni Disclaimer:\n" +
+                        "Ova aplikacija je tehnološki preglednik i ne poseduje niti distribuira video sadržaje. Svi autorski materijali pripadaju njihovim vlasnicima. Korišćenje aplikacije podrazumeva saglasnost sa YouTube uslovima korišćenja.");
+        builder.setPositiveButton("OK", null);
+        builder.show();
+    }
+
+    private void shareApp() {
+        try {
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+            shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Preporučujem YuTuFlix TV aplikaciju");
+            String shareMessage = "Pogledajte YuTuFlix TV - besplatnu aplikaciju za gledanje filmova i serija na TV-u!\n\n";
+            shareMessage += "https://play.google.com/store/apps/details?id=com.yutuflix.tv";
+            shareIntent.putExtra(Intent.EXTRA_TEXT, shareMessage);
+            startActivity(Intent.createChooser(shareIntent, "Podeli aplikaciju putem"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Greška pri deljenju aplikacije", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void setupButtonFocusListeners() {
@@ -215,7 +297,6 @@ public class CategoryActivity extends Activity {
 
         btnHome.setOnFocusChangeListener(focusListener);
         btnSearch.setOnFocusChangeListener(focusListener);
-        btnFavorites.setOnFocusChangeListener(focusListener);
         btnDomaciFilmovi.setOnFocusChangeListener(focusListener);
         btnDomaceSerije.setOnFocusChangeListener(focusListener);
         btnAkcija.setOnFocusChangeListener(focusListener);
@@ -223,6 +304,13 @@ public class CategoryActivity extends Activity {
         btnHoror.setOnFocusChangeListener(focusListener);
         btnSciFi.setOnFocusChangeListener(focusListener);
         btnRomansa.setOnFocusChangeListener(focusListener);
+        btnMisterija.setOnFocusChangeListener(focusListener);
+        btnDokumentarni.setOnFocusChangeListener(focusListener);
+        btnAnimirani.setOnFocusChangeListener(focusListener);
+        btnFavorites.setOnFocusChangeListener(focusListener);
+        btnAbout.setOnFocusChangeListener(focusListener);
+        btnPrivacy.setOnFocusChangeListener(focusListener);
+        btnShare.setOnFocusChangeListener(focusListener);
     }
 
     private void showSearch() {
@@ -328,7 +416,6 @@ public class CategoryActivity extends Activity {
 
     private void openSeriesDetails(Movie movie) {
         try {
-            // DEBUG: Proveri šta šaljemo
             Log.d("CATEGORY_DEBUG", "=== OPENING SERIES ===");
             Log.d("CATEGORY_DEBUG", "Title: " + movie.getTitle());
             Log.d("CATEGORY_DEBUG", "Type: " + movie.getType());

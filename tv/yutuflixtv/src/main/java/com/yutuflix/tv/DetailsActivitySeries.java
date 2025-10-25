@@ -15,7 +15,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
-import com.yutuflix.tv.R;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -99,17 +98,20 @@ public class DetailsActivitySeries extends Activity {
         favoriteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (FavoritesManager.isFavorite(DetailsActivitySeries.this, seriesTitle)) {
-                    FavoritesManager.removeFavorite(DetailsActivitySeries.this, seriesTitle);
+                String itemKey = getItemKey();
+                if (FavoritesManager.isFavorite(DetailsActivitySeries.this, itemKey)) {
+                    FavoritesManager.removeFavorite(DetailsActivitySeries.this, itemKey);
                     Toast.makeText(DetailsActivitySeries.this, "Uklonjeno iz omiljenih", Toast.LENGTH_SHORT).show();
                 } else {
-                    SeriesItem item = new SeriesItem(
+                    RecyclerItem item = new RecyclerItem(
                             seriesTitle,
                             seriesYear,
                             seriesGenre,
                             seriesDesc,
                             seriesImage,
-                            seasonsJson
+                            "", // videoId za serije je prazan
+                            seasonsJson,
+                            true // isSeries
                     );
                     FavoritesManager.addFavorite(DetailsActivitySeries.this, item);
                     Toast.makeText(DetailsActivitySeries.this, "Dodato u omiljene", Toast.LENGTH_SHORT).show();
@@ -129,6 +131,11 @@ public class DetailsActivitySeries extends Activity {
                 }
             }
         });
+    }
+
+    private String getItemKey() {
+        // Za serije koristimo title kao ključ
+        return seriesTitle;
     }
 
     private void setupEpisodes() {
@@ -355,7 +362,8 @@ public class DetailsActivitySeries extends Activity {
     }
 
     private void updateFavoriteIcon() {
-        if (seriesTitle != null && FavoritesManager.isFavorite(this, seriesTitle)) {
+        String itemKey = getItemKey();
+        if (itemKey != null && FavoritesManager.isFavorite(this, itemKey)) {
             favoriteButton.setImageResource(R.drawable.ic_favorite_filled);
             favoriteButton.setColorFilter(Color.RED);
         } else {
