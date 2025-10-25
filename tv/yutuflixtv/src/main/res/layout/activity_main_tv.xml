@@ -191,7 +191,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="20dp"
+        android:padding="2dp"
         android:visibility="gone">
 
         <ProgressBar
@@ -209,15 +209,19 @@
             android:text="Učitavam filmove..."
             android:textColor="@color/white"
             android:textSize="18sp"
-            android:layout_marginTop="10dp" />
+            android:layout_marginTop="1dp" />
 
     </LinearLayout>
 
-    <!-- CATEGORIES RECYCLER VIEW -->
+    <!-- CATEGORIES RECYCLER VIEW - FIXED POSITION -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/categoryRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="20dp"
+        android:paddingTop="1dp"
+        android:clipToPadding="false"
         android:visibility="visible" />
 
 </LinearLayout>
