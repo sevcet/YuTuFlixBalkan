@@ -35,10 +35,10 @@ public class CategoryActivity extends Activity {
     private List<Movie> allMovies = new ArrayList<>(); // Za pretragu
     private MovieAdapter movieAdapter;
 
-    // BUTTON VARIJABLE - KOMPLETNA LISTA
+    // BUTTON VARIJABLE - BEZ PODELE
     private Button btnHome, btnSearch, btnDomaciFilmovi, btnDomaceSerije, btnAkcija;
     private Button btnKomedija, btnHoror, btnSciFi, btnRomansa, btnMisterija, btnDokumentarni;
-    private Button btnAnimirani, btnFavorites, btnAbout, btnPrivacy, btnShare;
+    private Button btnAnimirani, btnFavorites, btnAbout, btnPrivacy;
 
     // SEARCH VARIJABLE
     private EditText searchBar;
@@ -78,7 +78,7 @@ public class CategoryActivity extends Activity {
         searchBar = findViewById(R.id.searchBar);
         searchContainer = findViewById(R.id.searchContainer);
 
-        // INIT BUTTONS - SVI BUTTONI
+        // INIT BUTTONS - BEZ PODELE
         btnHome = findViewById(R.id.btnHome);
         btnSearch = findViewById(R.id.btnSearch);
         btnDomaciFilmovi = findViewById(R.id.btnDomaciFilmovi);
@@ -94,7 +94,6 @@ public class CategoryActivity extends Activity {
         btnFavorites = findViewById(R.id.btnFavorites);
         btnAbout = findViewById(R.id.btnAbout);
         btnPrivacy = findViewById(R.id.btnPrivacy);
-        btnShare = findViewById(R.id.btnShare);
     }
 
     private void setupSearchBar() {
@@ -188,12 +187,6 @@ public class CategoryActivity extends Activity {
             startActivity(intent);
         });
 
-        // SHARE BUTTON - deli aplikaciju
-        btnShare.setOnClickListener(v -> {
-            hideSearch();
-            shareApp();
-        });
-
         // CATEGORY BUTTONS - OTVARAJU CATEGORY ACTIVITY
         btnDomaciFilmovi.setOnClickListener(v -> {
             hideSearch();
@@ -253,30 +246,16 @@ public class CategoryActivity extends Activity {
         builder.setTitle("O aplikaciji");
         builder.setMessage("Tehnički Preglednik Sadržaja\n\n" +
                 "Ova aplikacija funkcioniše kao video agregator koji koristi YouTube embed API za prikaz sadržaja. Svi metapodaci (metadata) se dinamički učitavaju sa eksternih XML izvora.\n\n" +
-                        "🔄 Tehnička Arhitektura:\n" +
-                        "• Metadata: GitHub Pages XML feedovi\n" +
-                        "• Video streaming: YouTube official embed player\n" +
-                        "• Lokalno skladištenje: Omiljeni sadržaji\n\n" +
-                        "📺 Način Rada:\n" +
-                        "Aplikacija ne hostira nikakav video sadržaj. Svi video zapisi se reprodukuju direktno sa YouTube servera putem službenog embed sistema, uz poštovanje autorskih prava i uslova korišćenja.\n\n" +
-                        "⚖️ Pravni Disclaimer:\n" +
-                        "Ova aplikacija je tehnološki preglednik i ne poseduje niti distribuira video sadržaje. Svi autorski materijali pripadaju njihovim vlasnicima. Korišćenje aplikacije podrazumeva saglasnost sa YouTube uslovima korišćenja.");
+                "🔄 Tehnička Arhitektura:\n" +
+                "• Metadata: GitHub Pages XML feedovi\n" +
+                "• Video streaming: YouTube official embed player\n" +
+                "• Lokalno skladištenje: Omiljeni sadržaji\n\n" +
+                "📺 Način Rada:\n" +
+                "Aplikacija ne hostira nikakav video sadržaj. Svi video zapisi se reprodukuju direktno sa YouTube servera putem službenog embed sistema, uz poštovanje autorskih prava i uslova korišćenja.\n\n" +
+                "⚖️ Pravni Disclaimer:\n" +
+                "Ova aplikacija je tehnološki preglednik i ne poseduje niti distribuira video sadržaje. Svi autorski materijali pripadaju njihovim vlasnicima. Korišćenje aplikacije podrazumeva saglasnost sa YouTube uslovima korišćenja.");
         builder.setPositiveButton("OK", null);
         builder.show();
-    }
-
-    private void shareApp() {
-        try {
-            Intent shareIntent = new Intent(Intent.ACTION_SEND);
-            shareIntent.setType("text/plain");
-            shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Preporučujem YuTuFlix TV aplikaciju");
-            String shareMessage = "Pogledajte YuTuFlix TV - besplatnu aplikaciju za gledanje filmova i serija na TV-u!\n\n";
-            shareMessage += "https://play.google.com/store/apps/details?id=com.yutuflix.tv";
-            shareIntent.putExtra(Intent.EXTRA_TEXT, shareMessage);
-            startActivity(Intent.createChooser(shareIntent, "Podeli aplikaciju putem"));
-        } catch (Exception e) {
-            Toast.makeText(this, "Greška pri deljenju aplikacije", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private void setupButtonFocusListeners() {
@@ -310,7 +289,6 @@ public class CategoryActivity extends Activity {
         btnFavorites.setOnFocusChangeListener(focusListener);
         btnAbout.setOnFocusChangeListener(focusListener);
         btnPrivacy.setOnFocusChangeListener(focusListener);
-        btnShare.setOnFocusChangeListener(focusListener);
     }
 
     private void showSearch() {

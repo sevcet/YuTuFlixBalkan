@@ -3,27 +3,23 @@ package com.yutuflix.tv;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
-import android.view.KeyEvent;
+import android.util.Log;
 import android.view.View;
-import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Toast;
 
 public class PlayerActivity extends Activity {
 
     private WebView webView;
-    private Handler hideHandler = new Handler();
-    private static final int HIDE_DELAY = 10000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player_tv);
 
-        // Sakrij sistem UI za TV
+        // Sakrij status bar i navigation bar
         hideSystemUI();
 
         setupWebView();
@@ -39,19 +35,42 @@ public class PlayerActivity extends Activity {
         ws.setLoadWithOverviewMode(true);
         ws.setUseWideViewPort(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
+        ws.setAllowFileAccess(true);
+        ws.setAllowContentAccess(true);
+        ws.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
-        // Dodaj JavaScript interfejs
-        webView.addJavascriptInterface(new WebAppInterface(), "AndroidInterface");
+        // Omogući fullscreen
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                super.onShowCustomView(view, callback);
+                // Fullscreen mode
+            }
+
+            @Override
+            public void onHideCustomView() {
+                super.onHideCustomView();
+                // Izlazak iz fullscreen
+            }
+        });
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                startHideTimer();
+                Log.d("PlayerActivity", "Page loaded: " + url);
+
+                // Sakrij sve browser kontrole
+                hideBrowserControls();
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                // Uvek otvori u našem WebView-u
+                return false;
             }
         });
 
-        // Fokus za TV
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
         webView.requestFocus();
@@ -59,138 +78,147 @@ public class PlayerActivity extends Activity {
 
     private void loadVideo() {
         Intent intent = getIntent();
-        String videoUrl = intent.getStringExtra("videoUrl");
-        String videoTitle = intent.getStringExtra("videoTitle");
 
-        if (videoUrl != null && !videoUrl.isEmpty()) {
-            // Koristi isti HTML kao mobilna verzija
-            String htmlContent = createHtmlPlayer(videoUrl);
-            webView.loadDataWithBaseURL("https://sevcet.github.io/", htmlContent, "text/html", "UTF-8", null);
+        // DEBUG: Proveri sve extra podatke
+        Log.d("PLAYER_DEBUG", "=== INTENT EXTRAS ===");
+        if (intent != null && intent.getExtras() != null) {
+            Bundle extras = intent.getExtras();
+            for (String key : extras.keySet()) {
+                Log.d("PLAYER_DEBUG", key + " = " + extras.get(key));
+            }
+        }
+
+        String videoId = null;
+        String videoUrl = null;
+
+        // Prvo probaj sa videoUrl
+        if (intent.hasExtra("videoUrl")) {
+            videoUrl = intent.getStringExtra("videoUrl");
+            Log.d("PLAYER_DEBUG", "Found videoUrl from intent: " + videoUrl);
+            videoId = extractVideoIdFromUrl(videoUrl);
+        }
+        // Probaj direktno sa videoId
+        else if (intent.hasExtra("videoId")) {
+            videoId = intent.getStringExtra("videoId");
+            Log.d("PLAYER_DEBUG", "Found videoId from intent: " + videoId);
+        }
+
+        if (videoId != null && !videoId.isEmpty()) {
+            String externalUrl = "https://sevcet.github.io/saittv.html?videoId=" + videoId;
+            Log.d("PLAYER_DEBUG", "Loading TV HTML URL: " + externalUrl);
+            webView.loadUrl(externalUrl);
         } else {
-            Toast.makeText(this, "Error: No video URL", Toast.LENGTH_LONG).show();
+            Log.e("PLAYER_DEBUG", "No valid videoId found");
             finish();
         }
     }
 
-    private String createHtmlPlayer(String videoUrl) {
-        return "<!DOCTYPE html>" +
-                "<html lang=\"en\">" +
-                "<head>" +
-                "<meta charset=\"UTF-8\">" +
-                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" +
-                "<title>YouTube Player</title>" +
-                "<style>" +
-                "body, html { margin: 0; padding: 0; background: #000; overflow: hidden; width: 100%; height: 100%; }" +
-                "#player { width: 100%; height: 100%; border: none; }" +
-                "#closeBtn { " +
-                "position: absolute; top: 50%; transform: translateY(-50%); right: 20px; " +
-                "background: rgba(0,0,0,0.8); color: #fff; border: none; font-size: 24px; " +
-                "border-radius: 50%; width: 50px; height: 50px; cursor: pointer; z-index: 10000; " +
-                "transition: opacity 0.3s, background 0.3s; display: flex; align-items: center; " +
-                "justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.5); font-weight: bold; }" +
-                "#closeBtn:hover { background: rgba(255,0,0,0.9); transform: translateY(-50%) scale(1.1); }" +
-                "</style>" +
-                "</head>" +
-                "<body>" +
-                "<button id=\"closeBtn\" title=\"Zatvori\">✕</button>" +
-                "<iframe id=\"player\" src=\"" + videoUrl + "?autoplay=1&rel=0&modestbranding=1&controls=1&showinfo=1&fs=1\" " +
-                "frameborder=\"0\" allow=\"autoplay; encrypted-media\" allowfullscreen></iframe>" +
-                "<script>" +
-                "let hideTimeout;" +
-                "function hideCloseButton() {" +
-                "   const closeBtn = document.getElementById('closeBtn');" +
-                "   if (closeBtn) closeBtn.style.opacity = '0';" +
-                "}" +
-                "function showCloseButton() {" +
-                "   const closeBtn = document.getElementById('closeBtn');" +
-                "   if (closeBtn) {" +
-                "       closeBtn.style.opacity = '1';" +
-                "       clearTimeout(hideTimeout);" +
-                "       hideTimeout = setTimeout(hideCloseButton, 10000);" +
-                "   }" +
-                "}" +
-                "document.addEventListener('click', function(event) {" +
-                "   if (event.target.id !== 'closeBtn') showCloseButton();" +
-                "});" +
-                "document.getElementById('closeBtn').addEventListener('click', function() {" +
-                "   if (window.AndroidInterface) AndroidInterface.closePlayer();" +
-                "   else window.history.back();" +
-                "});" +
-                "document.addEventListener('keydown', function(event) {" +
-                "   showCloseButton();" +
-                "   if (event.key === 'Backspace' || event.key === 'Escape') {" +
-                "       if (window.AndroidInterface) AndroidInterface.closePlayer();" +
-                "   }" +
-                "});" +
-                "setTimeout(hideCloseButton, 10000);" +
-                "showCloseButton();" +
-                "</script>" +
-                "</body>" +
-                "</html>";
-    }
+    private String extractVideoIdFromUrl(String url) {
+        if (url == null) return null;
 
-    public class WebAppInterface {
-        @JavascriptInterface
-        public void closePlayer() {
-            runOnUiThread(() -> {
-                finish();
-            });
+        Log.d("PLAYER_DEBUG", "Extracting videoId from: " + url);
+        String videoId = null;
+
+        if (url.contains("youtube.com/embed/")) {
+            String[] split = url.split("embed/");
+            if (split.length > 1) {
+                videoId = split[1];
+                int questionIndex = videoId.indexOf('?');
+                if (questionIndex != -1) {
+                    videoId = videoId.substring(0, questionIndex);
+                }
+            }
         }
-    }
-
-    // TV KEY EVENTS
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_BACK:
-            case KeyEvent.KEYCODE_ESCAPE:
-            case KeyEvent.KEYCODE_B:
-                finish();
-                return true;
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-                // Pokaži close button kada se pritisne enter/center
-                webView.loadUrl("javascript:showCloseButton()");
-                return true;
+        else if (url.contains("youtube.com/watch?v=")) {
+            String[] split = url.split("v=");
+            if (split.length > 1) {
+                videoId = split[1];
+                int ampersandIndex = videoId.indexOf('&');
+                if (ampersandIndex != -1) {
+                    videoId = videoId.substring(0, ampersandIndex);
+                }
+            }
         }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    private void startHideTimer() {
-        hideHandler.removeCallbacks(hideRunnable);
-        hideHandler.postDelayed(hideRunnable, HIDE_DELAY);
-    }
-
-    private final Runnable hideRunnable = new Runnable() {
-        @Override
-        public void run() {
-            webView.loadUrl("javascript:hideCloseButton()");
+        else if (url.contains("youtu.be/")) {
+            String[] split = url.split("youtu.be/");
+            if (split.length > 1) {
+                videoId = split[1];
+                int questionIndex = videoId.indexOf('?');
+                if (questionIndex != -1) {
+                    videoId = videoId.substring(0, questionIndex);
+                }
+            }
         }
-    };
+        else if (url.length() == 11 && !url.contains("/") && !url.contains("?")) {
+            videoId = url;
+        }
+
+        Log.d("PLAYER_DEBUG", "Extracted videoId: " + videoId);
+        return videoId;
+    }
+
+    private void hideBrowserControls() {
+        // JavaScript koji sakriva sve browser elemente
+        String hideScript = "javascript:(function() { " +
+                "document.body.style.margin = '0'; " +
+                "document.body.style.padding = '0'; " +
+                "if(document.documentElement) { " +
+                "   document.documentElement.style.margin = '0'; " +
+                "   document.documentElement.style.padding = '0'; " +
+                "} " +
+                "var elements = document.querySelectorAll('header, footer, nav, .toolbar, .navbar'); " +
+                "for(var i = 0; i < elements.length; i++) { " +
+                "   elements[i].style.display = 'none'; " +
+                "} " +
+                "})()";
+
+        webView.loadUrl(hideScript);
+    }
 
     private void hideSystemUI() {
         View decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                         | View.SYSTEM_UI_FLAG_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        hideSystemUI();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        hideHandler.removeCallbacks(hideRunnable);
-        // Pauziraj video
-        webView.loadUrl("javascript:document.getElementById('player').contentWindow.postMessage('{\"event\":\"command\",\"func\":\"pauseVideo\",\"args\":\"\"}', '*')");
+        if (webView != null) {
+            webView.loadUrl("javascript:if(window.player) player.pauseVideo();");
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        hideHandler.removeCallbacks(hideRunnable);
         if (webView != null) {
             webView.loadUrl("about:blank");
             webView.destroy();
         }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            hideSystemUI();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        finish();
     }
 }

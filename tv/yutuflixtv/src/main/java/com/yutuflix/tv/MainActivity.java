@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
     // BUTTON VARIJABLE
     private Button btnHome, btnSearch, btnDomaciFilmovi, btnDomaceSerije, btnAkcija;
     private Button btnKomedija, btnHoror, btnSciFi, btnRomansa, btnMisterija, btnDokumentarni;
-    private Button btnAnimirani, btnFavorites, btnAbout, btnPrivacy, btnShare;
+    private Button btnAnimirani, btnFavorites, btnAbout, btnPrivacy;
 
     // KATEGORIJE SA SPOLJNIM XML LINKOVIMA - FIKSNI REDOSLED
     private final LinkedHashMap<String, String> categoryMap = new LinkedHashMap<String, String>() {{
@@ -143,7 +143,6 @@ public class MainActivity extends Activity {
         btnFavorites = findViewById(R.id.btnFavorites);
         btnAbout = findViewById(R.id.btnAbout);
         btnPrivacy = findViewById(R.id.btnPrivacy);
-        btnShare = findViewById(R.id.btnShare);
     }
 
     private void setupSearchBar() {
@@ -283,61 +282,72 @@ public class MainActivity extends Activity {
             openCategory("Animirani", "https://sevcet.github.io/exyuflix/animirani.xml");
         });
 
-        // FAVORITES BUTTON - TEMPORARY
+        // FAVORITES BUTTON - OTVARA FAVORITES ACTIVITY
         btnFavorites.setOnClickListener(v -> {
             hideSearch();
-            Toast.makeText(this, "Favorites funkcionalnost će biti dodata uskoro", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(MainActivity.this, FavoritesActivity.class);
+            startActivity(intent);
         });
 
-        // ABOUT BUTTON
+        // ABOUT BUTTON - SA CRNOM POZADINOM I BELIM SLOVIMA
         btnAbout.setOnClickListener(v -> {
             hideSearch();
-            ScrollView scrollView = new ScrollView(MainActivity.this);
-            TextView message = new TextView(MainActivity.this);
-
-            message.setText(
-                    "🔍 Tehnički Preglednik Sadržaja\n\n" +
-                            "Ova aplikacija funkcioniše kao video agregator koji koristi YouTube embed API za prikaz sadržaja. Svi metapodaci (metadata) se dinamički učitavaju sa eksternih XML izvora.\n\n" +
-                            "🔄 Tehnička Arhitektura:\n" +
-                            "• Metadata: GitHub Pages XML feedovi\n" +
-                            "• Video streaming: YouTube official embed player\n" +
-                            "• Lokalno skladištenje: Omiljeni sadržaji\n\n" +
-                            "📺 Način Rada:\n" +
-                            "Aplikacija ne hostira nikakav video sadržaj. Svi video zapisi se reprodukuju direktno sa YouTube servera putem službenog embed sistema, uz poštovanje autorskih prava i uslova korišćenja.\n\n" +
-                            "⚖️ Pravni Disclaimer:\n" +
-                            "Ova aplikacija je tehnološki preglednik i ne poseduje niti distribuira video sadržaje. Svi autorski materijali pripadaju njihovim vlasnicima. Korišćenje aplikacije podrazumeva saglasnost sa YouTube uslovima korišćenja."
-            );
-            message.setTextColor(Color.BLACK);
-            message.setPadding(50, 30, 50, 30);
-            message.setTextSize(16f);
-
-            scrollView.addView(message);
-
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("O aplikaciji")
-                    .setView(scrollView)
-                    .setPositiveButton("OK", null)
-                    .show();
+            showAboutDialog();
         });
 
-        // PRIVACY BUTTON - TEMPORARY
+        // PRIVACY BUTTON - OTVARA PRIVACY ACTIVITY
         btnPrivacy.setOnClickListener(v -> {
             hideSearch();
-            Toast.makeText(this, "Privacy funkcionalnost će biti dodata uskoro", Toast.LENGTH_SHORT).show();
-        });
-
-        // SHARE BUTTON
-        btnShare.setOnClickListener(v -> {
-            hideSearch();
-            Intent shareIntent = new Intent(Intent.ACTION_SEND);
-            shareIntent.setType("text/plain");
-            shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Preporučujem ovu aplikaciju");
-            shareIntent.putExtra(Intent.EXTRA_TEXT, "https://play.google.com/store/apps/details?id=com.yutuflix.tv");
-            startActivity(Intent.createChooser(shareIntent, "Podeli putem"));
+            Intent intent = new Intent(MainActivity.this, PrivacyActivity.class);
+            startActivity(intent);
         });
 
         // TV FOCUS LISTENERS ZA SVE BUTTONE
         setupButtonFocusListeners();
+    }
+
+    private void showAboutDialog() {
+        ScrollView scrollView = new ScrollView(MainActivity.this);
+        LinearLayout container = new LinearLayout(MainActivity.this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(50, 30, 50, 30);
+
+        TextView message = new TextView(MainActivity.this);
+        message.setText(
+                "🔍 Tehnički Preglednik Sadržaja\n\n" +
+                        "Ova aplikacija funkcioniše kao video agregator koji koristi YouTube embed API za prikaz sadržaja. Svi metapodaci (metadata) se dinamički učitavaju sa eksternih XML izvora.\n\n" +
+                        "🔄 Tehnička Arhitektura:\n" +
+                        "• Metadata: GitHub Pages XML feedovi\n" +
+                        "• Video streaming: YouTube official embed player\n" +
+                        "• Lokalno skladištenje: Omiljeni sadržaji\n\n" +
+                        "📺 Način Rada:\n" +
+                        "Aplikacija ne hostira nikakav video sadržaj. Svi video zapisi se reprodukuju direktno sa YouTube servera putem službenog embed sistema, uz poštovanje autorskih prava i uslova korišćenja.\n\n" +
+                        "⚖️ Pravni Disclaimer:\n" +
+                        "Ova aplikacija je tehnološki preglednik i ne poseduje niti distribuira video sadržaje. Svi autorski materijali pripadaju njihovim vlasnicima. Korišćenje aplikacije podrazumeva saglasnost sa YouTube uslovima korišćenja."
+        );
+
+        // CRNA POZADINA I BELA SLOVA
+        message.setTextColor(Color.WHITE);
+        message.setTextSize(16f);
+        message.setLineSpacing(1.2f, 1.2f);
+
+        container.setBackgroundColor(Color.BLACK);
+        container.addView(message);
+        scrollView.addView(container);
+
+        AlertDialog dialog = new AlertDialog.Builder(MainActivity.this)
+                .setTitle("O aplikaciji")
+                .setView(scrollView)
+                .setPositiveButton("OK", null)
+                .create();
+
+        // Postavi crnu pozadinu i bela slova za dialog
+        dialog.setOnShowListener(dialogInterface -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE);
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setBackgroundColor(Color.DKGRAY);
+        });
+
+        dialog.show();
     }
 
     private void setupButtonFocusListeners() {
@@ -371,7 +381,6 @@ public class MainActivity extends Activity {
         btnFavorites.setOnFocusChangeListener(focusListener);
         btnAbout.setOnFocusChangeListener(focusListener);
         btnPrivacy.setOnFocusChangeListener(focusListener);
-        btnShare.setOnFocusChangeListener(focusListener);
     }
 
     private void loadAllCategories() {
