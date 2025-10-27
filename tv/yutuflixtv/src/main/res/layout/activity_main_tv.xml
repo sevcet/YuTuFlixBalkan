@@ -252,7 +252,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="2dp"
+        android:padding="20dp"
         android:visibility="gone">
 
         <ProgressBar

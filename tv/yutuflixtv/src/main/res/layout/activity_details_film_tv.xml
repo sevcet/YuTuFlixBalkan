@@ -26,8 +26,8 @@
 
                 <ImageView
                     android:id="@+id/detailFilmImage"
-                    android:layout_width="200dp"
-                    android:layout_height="280dp"
+                    android:layout_width="300dp"
+                    android:layout_height="169dp"
                     android:scaleType="centerCrop"
                     android:src="@drawable/placeholder"
                     android:layout_marginEnd="16dp" />
@@ -95,7 +95,7 @@
                         android:layout_height="wrap_content"
                         android:text="Opis filma..."
                         android:textColor="@color/white"
-                        android:textSize="12sp"
+                        android:textSize="18sp"
                         android:lineSpacingExtra="2dp"
                         android:maxLines="6"
                         android:ellipsize="end"
@@ -111,6 +111,7 @@
                         android:background="@drawable/tv_button_background"
                         android:textColor="@color/white"
                         android:focusable="true"
+                        android:layout_margin="8dp"
                         android:focusableInTouchMode="true" />
 
                 </LinearLayout>
