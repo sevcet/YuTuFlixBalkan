@@ -9,15 +9,15 @@
     <ImageView
         android:id="@+id/favoritePoster"
         android:layout_width="100dp"
-        android:layout_height="150dp"
+        android:layout_height="56dp"
         android:scaleType="centerCrop"
         android:src="@drawable/placeholder" />
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="0dp"
-        android:layout_height="match_parent"
+        android:layout_height="73dp"
         android:layout_weight="1"
+        android:orientation="vertical"
         android:paddingStart="8dp">
 
         <TextView
@@ -25,22 +25,22 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Naslov"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"/>
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/favoriteYear"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Godina"
-            android:textColor="#AAAAAA"/>
+            android:textColor="#AAAAAA" />
 
         <TextView
             android:id="@+id/favoriteGenre"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Žanr"
-            android:textColor="#AAAAAA"/>
+            android:textColor="#AAAAAA" />
     </LinearLayout>
 </LinearLayout>

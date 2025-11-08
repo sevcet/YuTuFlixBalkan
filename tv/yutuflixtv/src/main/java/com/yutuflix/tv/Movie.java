@@ -14,6 +14,8 @@ public class Movie implements Parcelable {
     private String videoId;
     private List<Season> seasons;
     private String seasonsJson;
+    private String availableCaptions;
+    private String audioLanguage;
 
     public Movie(String title, String year, String genre, String type,
                  String description, String imageUrl, String videoId,
@@ -27,6 +29,25 @@ public class Movie implements Parcelable {
         this.videoId = videoId;
         this.seasons = seasons;
         this.seasonsJson = seasonsJson;
+        this.availableCaptions = "";
+        this.audioLanguage = "";
+    }
+
+    public Movie(String title, String year, String genre, String type,
+                 String description, String imageUrl, String videoId,
+                 List<Season> seasons, String seasonsJson,
+                 String availableCaptions, String audioLanguage) {
+        this.title = title;
+        this.year = year;
+        this.genre = genre;
+        this.type = type;
+        this.description = description;
+        this.imageUrl = imageUrl;
+        this.videoId = videoId;
+        this.seasons = seasons;
+        this.seasonsJson = seasonsJson;
+        this.availableCaptions = availableCaptions;
+        this.audioLanguage = audioLanguage;
     }
 
     // GETTERI
@@ -39,6 +60,51 @@ public class Movie implements Parcelable {
     public String getVideoId() { return videoId; }
     public List<Season> getSeasons() { return seasons; }
     public String getSeasonsJson() { return seasonsJson; }
+    public String getAvailableCaptions() { return availableCaptions; }
+    public String getAudioLanguage() { return audioLanguage; }
+
+    // SETTERI
+    public void setAvailableCaptions(String availableCaptions) {
+        this.availableCaptions = availableCaptions;
+    }
+
+    public void setAudioLanguage(String audioLanguage) {
+        this.audioLanguage = audioLanguage;
+    }
+
+    // POMOĆNE METODE ZA JEZIKE
+    public boolean hasPreferredLanguage(List<String> preferredLanguages) {
+        // Proveri audio jezik
+        if (audioLanguage != null && !audioLanguage.isEmpty()) {
+            if (preferredLanguages.contains(audioLanguage)) {
+                return true;
+            }
+        }
+
+        // Proveri dostupne titlove
+        if (availableCaptions != null && !availableCaptions.isEmpty()) {
+            String[] captions = availableCaptions.split(",");
+            for (String caption : captions) {
+                String cleanCaption = caption.trim();
+                if (preferredLanguages.contains(cleanCaption)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public List<String> getAvailableCaptionList() {
+        List<String> captionList = new java.util.ArrayList<>();
+        if (availableCaptions != null && !availableCaptions.isEmpty()) {
+            String[] captions = availableCaptions.split(",");
+            for (String caption : captions) {
+                captionList.add(caption.trim());
+            }
+        }
+        return captionList;
+    }
 
     // PARCELABLE
     protected Movie(Parcel in) {
@@ -50,6 +116,8 @@ public class Movie implements Parcelable {
         imageUrl = in.readString();
         videoId = in.readString();
         seasonsJson = in.readString();
+        availableCaptions = in.readString();
+        audioLanguage = in.readString();
     }
 
     @Override
@@ -62,13 +130,35 @@ public class Movie implements Parcelable {
         dest.writeString(imageUrl);
         dest.writeString(videoId);
         dest.writeString(seasonsJson);
+        dest.writeString(availableCaptions);
+        dest.writeString(audioLanguage);
     }
 
     @Override
     public int describeContents() { return 0; }
 
     public static final Creator<Movie> CREATOR = new Creator<Movie>() {
-        @Override public Movie createFromParcel(Parcel in) { return new Movie(in); }
-        @Override public Movie[] newArray(int size) { return new Movie[size]; }
+        @Override
+        public Movie createFromParcel(Parcel in) {
+            return new Movie(in);
+        }
+
+        @Override
+        public Movie[] newArray(int size) {
+            return new Movie[size];
+        }
     };
+
+    @Override
+    public String toString() {
+        return "Movie{" +
+                "title='" + title + '\'' +
+                ", year='" + year + '\'' +
+                ", genre='" + genre + '\'' +
+                ", type='" + type + '\'' +
+                ", videoId='" + videoId + '\'' +
+                ", availableCaptions='" + availableCaptions + '\'' +
+                ", audioLanguage='" + audioLanguage + '\'' +
+                '}';
+    }
 }

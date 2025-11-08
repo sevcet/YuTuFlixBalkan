@@ -18,6 +18,8 @@ import android.widget.Toast;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
@@ -32,27 +34,30 @@ public class CategoryActivity extends Activity {
     private RecyclerView recyclerView;
     private ProgressBar progressBar;
     private List<Movie> movieList = new ArrayList<>();
-    private List<Movie> allMovies = new ArrayList<>(); // Za pretragu
+    private List<Movie> allMovies = new ArrayList<>();
     private MovieAdapter movieAdapter;
 
-    // BUTTON VARIJABLE - BEZ PODELE
-    private Button btnHome, btnSearch, btnDomaciFilmovi, btnDomaceSerije, btnAkcija;
-    private Button btnKomedija, btnHoror, btnSciFi, btnRomansa, btnMisterija, btnDokumentarni;
-    private Button btnAnimirani, btnFavorites, btnAbout, btnPrivacy;
+    private Button btnHome, btnSearch, btnLanguage, btnAction, btnComedy;
+    private Button btnDrama, btnHorror, btnThriller, btnSciFi, btnRomance;
+    private Button btnAnimation, btnCrime, btnTVSeries, btnClassic, btnDocumentary;
+    private Button btnFavorites, btnAbout, btnPrivacy;
 
-    // SEARCH VARIJABLE
     private EditText searchBar;
     private LinearLayout searchContainer;
     private boolean isSearchActive = false;
     private boolean isShowingSearchResults = false;
 
     private String currentCategoryName;
-    private String currentXmlUrl;
+    private String[] currentXmlUrls;
+    private LanguageManager languageManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_category_videos);
+
+        // INICIJALIZUJ LANGUAGE MANAGER
+        languageManager = new LanguageManager(this);
 
         initViews();
         setupButtonNavigation();
@@ -60,12 +65,12 @@ public class CategoryActivity extends Activity {
         setupRecyclerView();
 
         currentCategoryName = getIntent().getStringExtra("categoryName");
-        currentXmlUrl = getIntent().getStringExtra("xmlUrl");
+        currentXmlUrls = getIntent().getStringArrayExtra("xmlUrls");
 
-        if (currentXmlUrl != null) {
-            new LoadXmlTask().execute(currentXmlUrl);
+        if (currentXmlUrls != null && currentXmlUrls.length > 0) {
+            new LoadXmlTask().execute(currentXmlUrls);
         } else {
-            Toast.makeText(this, "Error: No XML URL", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Error: No XML URLs", Toast.LENGTH_LONG).show();
             finish();
         }
     }
@@ -74,23 +79,25 @@ public class CategoryActivity extends Activity {
         recyclerView = findViewById(R.id.recyclerView);
         progressBar = findViewById(R.id.progressBar);
 
-        // SEARCH VIEWS
         searchBar = findViewById(R.id.searchBar);
         searchContainer = findViewById(R.id.searchContainer);
 
-        // INIT BUTTONS - BEZ PODELE
+        // INIT BUTTONS - GLOBALNI ŽANROVI
         btnHome = findViewById(R.id.btnHome);
         btnSearch = findViewById(R.id.btnSearch);
-        btnDomaciFilmovi = findViewById(R.id.btnDomaciFilmovi);
-        btnDomaceSerije = findViewById(R.id.btnDomaceSerije);
-        btnAkcija = findViewById(R.id.btnAkcija);
-        btnKomedija = findViewById(R.id.btnKomedija);
-        btnHoror = findViewById(R.id.btnHoror);
+        btnLanguage = findViewById(R.id.btnLanguage);
+        btnAction = findViewById(R.id.btnAction);
+        btnComedy = findViewById(R.id.btnComedy);
+        btnDrama = findViewById(R.id.btnDrama);
+        btnHorror = findViewById(R.id.btnHorror);
+        btnThriller = findViewById(R.id.btnThriller);
         btnSciFi = findViewById(R.id.btnSciFi);
-        btnRomansa = findViewById(R.id.btnRomansa);
-        btnMisterija = findViewById(R.id.btnMisterija);
-        btnDokumentarni = findViewById(R.id.btnDokumentarni);
-        btnAnimirani = findViewById(R.id.btnAnimirani);
+        btnRomance = findViewById(R.id.btnRomance);
+        btnAnimation = findViewById(R.id.btnAnimation);
+        btnCrime = findViewById(R.id.btnCrime);
+        btnTVSeries = findViewById(R.id.btnTVSeries);
+        btnClassic = findViewById(R.id.btnClassic);
+        btnDocumentary = findViewById(R.id.btnDocumentary);
         btnFavorites = findViewById(R.id.btnFavorites);
         btnAbout = findViewById(R.id.btnAbout);
         btnPrivacy = findViewById(R.id.btnPrivacy);
@@ -106,7 +113,7 @@ public class CategoryActivity extends Activity {
                         if (!query.isEmpty()) {
                             performSearch(query);
                         } else {
-                            Toast.makeText(CategoryActivity.this, "Unesite termin za pretragu", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(CategoryActivity.this, "Enter search term", Toast.LENGTH_SHORT).show();
                         }
                         return true;
                     } else if (keyCode == KeyEvent.KEYCODE_BACK) {
@@ -132,7 +139,10 @@ public class CategoryActivity extends Activity {
     }
 
     private void setupRecyclerView() {
-        GridLayoutManager layoutManager = new GridLayoutManager(this, 5);
+        int spanCount = calculateNumberOfColumns();
+        Log.d("GRID_DEBUG", "Calculated span count: " + spanCount);
+
+        GridLayoutManager layoutManager = new GridLayoutManager(this, spanCount);
         recyclerView.setLayoutManager(layoutManager);
 
         movieAdapter = new MovieAdapter(this, movieList, new MovieAdapter.OnMovieClickListener() {
@@ -148,8 +158,12 @@ public class CategoryActivity extends Activity {
         recyclerView.setAdapter(movieAdapter);
     }
 
+    private int calculateNumberOfColumns() {
+        // Fiksno 5 kolona za sve TV uredjaje
+        return 5;
+    }
+
     private void setupButtonNavigation() {
-        // HOME BUTTON - vrati na MainActivity
         btnHome.setOnClickListener(v -> {
             hideSearch();
             Intent intent = new Intent(CategoryActivity.this, MainActivity.class);
@@ -158,7 +172,6 @@ public class CategoryActivity extends Activity {
             finish();
         });
 
-        // SEARCH BUTTON - toggle search bar
         btnSearch.setOnClickListener(v -> {
             if (isSearchActive) {
                 hideSearch();
@@ -167,93 +180,204 @@ public class CategoryActivity extends Activity {
             }
         });
 
-        // FAVORITES BUTTON - OTVARA FAVORITES ACTIVITY
+        // LANGUAGE BUTTON - otvara meni za izbor jezika
+        btnLanguage.setOnClickListener(v -> {
+            hideSearch();
+            showLanguageSelectionDialog();
+        });
+
         btnFavorites.setOnClickListener(v -> {
             hideSearch();
             Intent intent = new Intent(CategoryActivity.this, FavoritesActivity.class);
             startActivity(intent);
         });
 
-        // ABOUT BUTTON - prikaži about dialog
         btnAbout.setOnClickListener(v -> {
             hideSearch();
             showAboutDialog();
         });
 
-        // PRIVACY BUTTON - OTVARA PRIVACY ACTIVITY
         btnPrivacy.setOnClickListener(v -> {
             hideSearch();
             Intent intent = new Intent(CategoryActivity.this, PrivacyActivity.class);
             startActivity(intent);
         });
 
-        // CATEGORY BUTTONS - OTVARAJU CATEGORY ACTIVITY
-        btnDomaciFilmovi.setOnClickListener(v -> {
+        // CATEGORY BUTTONS - OTVARAJU CATEGORY ACTIVITY SA VIŠE XML FAJLOVA
+        btnAction.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Domaci Filmovi", "https://sevcet.github.io/exyuflix/domaci_filmovi.xml");
+            openCategory("Action & Adventure", new String[]{
+                    "https://sevcet.github.io/exyuflix/action1.xml",
+                    "https://sevcet.github.io/exyuflix/action2.xml",
+                    "https://sevcet.github.io/exyuflix/action3.xml",
+                    "https://sevcet.github.io/exyuflix/action4.xml"
+            });
         });
 
-        btnDomaceSerije.setOnClickListener(v -> {
+        btnComedy.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Domace Serije", "https://sevcet.github.io/exyuflix/domace_serije.xml");
+            openCategory("Comedy", new String[]{
+                    "https://sevcet.github.io/exyuflix/comedy1.xml",
+                    "https://sevcet.github.io/exyuflix/comedy2.xml",
+                    "https://sevcet.github.io/exyuflix/comedy3.xml"
+            });
         });
 
-        btnAkcija.setOnClickListener(v -> {
+        btnDrama.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Akcija", "https://sevcet.github.io/exyuflix/akcija.xml");
+            openCategory("Drama", new String[]{
+                    "https://sevcet.github.io/exyuflix/drama1.xml",
+                    "https://sevcet.github.io/exyuflix/drama2.xml"
+            });
         });
 
-        btnKomedija.setOnClickListener(v -> {
+        btnHorror.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Komedija", "https://sevcet.github.io/exyuflix/komedija.xml");
+            openCategory("Horror", new String[]{
+                    "https://sevcet.github.io/exyuflix/horror1.xml",
+                    "https://sevcet.github.io/exyuflix/horror2.xml"
+            });
         });
 
-        btnHoror.setOnClickListener(v -> {
+        btnThriller.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Horor", "https://sevcet.github.io/exyuflix/horor.xml");
+            openCategory("Thriller", new String[]{
+                    "https://sevcet.github.io/exyuflix/thriller1.xml",
+                    "https://sevcet.github.io/exyuflix/thriller2.xml"
+            });
         });
 
         btnSciFi.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Sci-Fi", "https://sevcet.github.io/exyuflix/sci_fi.xml");
+            openCategory("Sci-Fi & Fantasy", new String[]{
+                    "https://sevcet.github.io/exyuflix/scifi1.xml",
+                    "https://sevcet.github.io/exyuflix/scifi2.xml",
+                    "https://sevcet.github.io/exyuflix/scifi3.xml"
+            });
         });
 
-        btnRomansa.setOnClickListener(v -> {
+        btnRomance.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Romansa", "https://sevcet.github.io/exyuflix/romansa.xml");
+            openCategory("Romance", new String[]{
+                    "https://sevcet.github.io/exyuflix/romance1.xml",
+                    "https://sevcet.github.io/exyuflix/romance2.xml"
+            });
         });
 
-        btnMisterija.setOnClickListener(v -> {
+        btnAnimation.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Misterija", "https://sevcet.github.io/exyuflix/misterija.xml");
+            openCategory("Animation & Family", new String[]{
+                    "https://sevcet.github.io/exyuflix/animation1.xml",
+                    "https://sevcet.github.io/exyuflix/animation2.xml"
+            });
         });
 
-        btnDokumentarni.setOnClickListener(v -> {
+        btnCrime.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Dokumentarni", "https://sevcet.github.io/exyuflix/dokumentarni.xml");
+            openCategory("Crime & Mystery", new String[]{
+                    "https://sevcet.github.io/exyuflix/crime1.xml",
+                    "https://sevcet.github.io/exyuflix/crime2.xml"
+            });
         });
 
-        btnAnimirani.setOnClickListener(v -> {
+        btnTVSeries.setOnClickListener(v -> {
             hideSearch();
-            openCategory("Animirani", "https://sevcet.github.io/exyuflix/animirani.xml");
+            openCategory("TV Series", new String[]{
+                    "https://sevcet.github.io/exyuflix/series1.xml",
+                    "https://sevcet.github.io/exyuflix/series2.xml",
+                    "https://sevcet.github.io/exyuflix/series3.xml"
+            });
+        });
+
+        btnClassic.setOnClickListener(v -> {
+            hideSearch();
+            openCategory("Classic Movies", new String[]{
+                    "https://sevcet.github.io/exyuflix/classic1.xml",
+                    "https://sevcet.github.io/exyuflix/classic2.xml"
+            });
+        });
+
+        btnDocumentary.setOnClickListener(v -> {
+            hideSearch();
+            openCategory("Documentary", new String[]{
+                    "https://sevcet.github.io/exyuflix/documentary1.xml",
+                    "https://sevcet.github.io/exyuflix/documentary2.xml"
+            });
         });
 
         setupButtonFocusListeners();
     }
 
+    private void showLanguageSelectionDialog() {
+        final List<String> selectedLanguages = new ArrayList<>(languageManager.getFavoriteLanguages());
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Select Favorite Languages");
+        builder.setMessage("Choose languages for content filtering");
+
+        // Pripremi podatke za dialog
+        final String[] languageNames = languageManager.getSupportedLanguageNames();
+        final String[] languageCodes = languageManager.getSupportedLanguageCodes();
+
+        boolean[] checkedItems = new boolean[languageNames.length];
+        for (int i = 0; i < languageCodes.length; i++) {
+            checkedItems[i] = selectedLanguages.contains(languageCodes[i]);
+        }
+
+        builder.setMultiChoiceItems(languageNames, checkedItems, (dialog, which, isChecked) -> {
+            String langCode = languageCodes[which];
+            if (isChecked) {
+                selectedLanguages.add(langCode);
+            } else {
+                selectedLanguages.remove(langCode);
+            }
+        });
+
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            // Sačuvaj omiljene jezike
+            languageManager.setFavoriteLanguages(selectedLanguages);
+
+            // Ponovo učitaj filmove sa novim filterom
+            if (currentXmlUrls != null) {
+                new LoadXmlTask().execute(currentXmlUrls);
+            }
+            Toast.makeText(CategoryActivity.this, "Languages saved: " + selectedLanguages.size() + " selected", Toast.LENGTH_SHORT).show();
+        });
+
+        builder.setNegativeButton("Cancel", null);
+
+        builder.setNeutralButton("Select All", (dialog, which) -> {
+            // Automatski selektuj sve jezike
+            selectedLanguages.clear();
+            for (String code : languageCodes) {
+                selectedLanguages.add(code);
+            }
+
+            // Sačuvaj i ponovo učitaj
+            languageManager.setFavoriteLanguages(selectedLanguages);
+            if (currentXmlUrls != null) {
+                new LoadXmlTask().execute(currentXmlUrls);
+            }
+            Toast.makeText(CategoryActivity.this, "All languages selected", Toast.LENGTH_SHORT).show();
+        });
+
+        android.app.AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
     private void showAboutDialog() {
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("O aplikaciji");
-        builder.setMessage("Tehnički Preglednik Sadržaja\n\n" +
-                "Ova aplikacija funkcioniše kao video agregator koji koristi YouTube embed API za prikaz sadržaja. Svi metapodaci (metadata) se dinamički učitavaju sa eksternih XML izvora.\n\n" +
-                "🔄 Tehnička Arhitektura:\n" +
-                "• Metadata: GitHub Pages XML feedovi\n" +
+        builder.setTitle("About Application");
+        builder.setMessage("🔍 Content Aggregator\n\n" +
+                "This application functions as a video aggregator using YouTube embed API to display content. All metadata is dynamically loaded from external XML sources.\n\n" +
+                "🔄 Technical Architecture:\n" +
+                "• Metadata: GitHub Pages XML feeds\n" +
                 "• Video streaming: YouTube official embed player\n" +
-                "• Lokalno skladištenje: Omiljeni sadržaji\n\n" +
-                "📺 Način Rada:\n" +
-                "Aplikacija ne hostira nikakav video sadržaj. Svi video zapisi se reprodukuju direktno sa YouTube servera putem službenog embed sistema, uz poštovanje autorskih prava i uslova korišćenja.\n\n" +
-                "⚖️ Pravni Disclaimer:\n" +
-                "Ova aplikacija je tehnološki preglednik i ne poseduje niti distribuira video sadržaje. Svi autorski materijali pripadaju njihovim vlasnicima. Korišćenje aplikacije podrazumeva saglasnost sa YouTube uslovima korišćenja.");
+                "• Local storage: Favorite content\n\n" +
+                "📺 How it Works:\n" +
+                "The application does not host any video content. All videos are played directly from YouTube servers through the official embed system, respecting copyright and terms of use.\n\n" +
+                "⚖️ Legal Disclaimer:\n" +
+                "This application is a technological content browser and does not own or distribute video content. All copyrighted materials belong to their respective owners. Using the application implies agreement with YouTube terms of service.");
         builder.setPositiveButton("OK", null);
         builder.show();
     }
@@ -276,16 +400,19 @@ public class CategoryActivity extends Activity {
 
         btnHome.setOnFocusChangeListener(focusListener);
         btnSearch.setOnFocusChangeListener(focusListener);
-        btnDomaciFilmovi.setOnFocusChangeListener(focusListener);
-        btnDomaceSerije.setOnFocusChangeListener(focusListener);
-        btnAkcija.setOnFocusChangeListener(focusListener);
-        btnKomedija.setOnFocusChangeListener(focusListener);
-        btnHoror.setOnFocusChangeListener(focusListener);
+        btnLanguage.setOnFocusChangeListener(focusListener);
+        btnAction.setOnFocusChangeListener(focusListener);
+        btnComedy.setOnFocusChangeListener(focusListener);
+        btnDrama.setOnFocusChangeListener(focusListener);
+        btnHorror.setOnFocusChangeListener(focusListener);
+        btnThriller.setOnFocusChangeListener(focusListener);
         btnSciFi.setOnFocusChangeListener(focusListener);
-        btnRomansa.setOnFocusChangeListener(focusListener);
-        btnMisterija.setOnFocusChangeListener(focusListener);
-        btnDokumentarni.setOnFocusChangeListener(focusListener);
-        btnAnimirani.setOnFocusChangeListener(focusListener);
+        btnRomance.setOnFocusChangeListener(focusListener);
+        btnAnimation.setOnFocusChangeListener(focusListener);
+        btnCrime.setOnFocusChangeListener(focusListener);
+        btnTVSeries.setOnFocusChangeListener(focusListener);
+        btnClassic.setOnFocusChangeListener(focusListener);
+        btnDocumentary.setOnFocusChangeListener(focusListener);
         btnFavorites.setOnFocusChangeListener(focusListener);
         btnAbout.setOnFocusChangeListener(focusListener);
         btnPrivacy.setOnFocusChangeListener(focusListener);
@@ -312,8 +439,8 @@ public class CategoryActivity extends Activity {
 
         if (isShowingSearchResults) {
             isShowingSearchResults = false;
-            if (currentXmlUrl != null) {
-                new LoadXmlTask().execute(currentXmlUrl);
+            if (currentXmlUrls != null) {
+                new LoadXmlTask().execute(currentXmlUrls);
             }
         }
     }
@@ -339,13 +466,13 @@ public class CategoryActivity extends Activity {
         }
 
         if (searchResults.isEmpty()) {
-            Toast.makeText(this, "Nema rezultata za: " + query, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No results for: " + query, Toast.LENGTH_SHORT).show();
         } else {
             movieList.clear();
             movieList.addAll(searchResults);
             movieAdapter.notifyDataSetChanged();
 
-            Toast.makeText(this, "Pronađeno " + searchResults.size() + " rezultata", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Found " + searchResults.size() + " results", Toast.LENGTH_SHORT).show();
             isShowingSearchResults = true;
             hideSearchUIOnly();
         }
@@ -362,15 +489,15 @@ public class CategoryActivity extends Activity {
         }, 100);
     }
 
-    private void openCategory(String categoryName, String xmlUrl) {
+    private void openCategory(String categoryName, String[] xmlUrls) {
         if (categoryName.equals(currentCategoryName)) {
             hideSearch();
-            new LoadXmlTask().execute(xmlUrl);
+            new LoadXmlTask().execute(xmlUrls);
         } else {
             hideSearch();
             Intent intent = new Intent(CategoryActivity.this, CategoryActivity.class);
             intent.putExtra("categoryName", categoryName);
-            intent.putExtra("xmlUrl", xmlUrl);
+            intent.putExtra("xmlUrls", xmlUrls);
             startActivity(intent);
             finish();
         }
@@ -385,9 +512,11 @@ public class CategoryActivity extends Activity {
             intent.putExtra("description", movie.getDescription());
             intent.putExtra("imageUrl", movie.getImageUrl());
             intent.putExtra("videoId", movie.getVideoId());
+            intent.putExtra("availableCaptions", movie.getAvailableCaptions());
+            intent.putExtra("audioLanguage", movie.getAudioLanguage());
             startActivity(intent);
         } catch (Exception e) {
-            Toast.makeText(this, "Greška pri otvaranju filma", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Error opening movie", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
     }
@@ -397,15 +526,9 @@ public class CategoryActivity extends Activity {
             Log.d("CATEGORY_DEBUG", "=== OPENING SERIES ===");
             Log.d("CATEGORY_DEBUG", "Title: " + movie.getTitle());
             Log.d("CATEGORY_DEBUG", "Type: " + movie.getType());
+            Log.d("CATEGORY_DEBUG", "Audio: " + movie.getAudioLanguage());
+            Log.d("CATEGORY_DEBUG", "Captions: " + movie.getAvailableCaptions());
             Log.d("CATEGORY_DEBUG", "SeasonsJson: " + (movie.getSeasonsJson() != null ? "NOT NULL" : "NULL"));
-            if (movie.getSeasonsJson() != null) {
-                Log.d("CATEGORY_DEBUG", "SeasonsJson length: " + movie.getSeasonsJson().length());
-                if (movie.getSeasonsJson().length() > 0) {
-                    Log.d("CATEGORY_DEBUG", "First 100 chars: " + movie.getSeasonsJson().substring(0, Math.min(movie.getSeasonsJson().length(), 100)));
-                } else {
-                    Log.d("CATEGORY_DEBUG", "SeasonsJson is EMPTY STRING!");
-                }
-            }
 
             Intent intent = new Intent(CategoryActivity.this, DetailsActivitySeries.class);
             intent.putExtra("title", movie.getTitle());
@@ -413,10 +536,13 @@ public class CategoryActivity extends Activity {
             intent.putExtra("genre", movie.getGenre());
             intent.putExtra("description", movie.getDescription());
             intent.putExtra("imageUrl", movie.getImageUrl());
+            intent.putExtra("videoId", movie.getVideoId());
             intent.putExtra("seasonsJson", movie.getSeasonsJson());
+            intent.putExtra("availableCaptions", movie.getAvailableCaptions());
+            intent.putExtra("audioLanguage", movie.getAudioLanguage());
             startActivity(intent);
         } catch (Exception e) {
-            Toast.makeText(this, "Greška pri otvaranju serije", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Error opening series", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
     }
@@ -429,8 +555,8 @@ public class CategoryActivity extends Activity {
                 return true;
             } else if (isShowingSearchResults) {
                 isShowingSearchResults = false;
-                if (currentXmlUrl != null) {
-                    new LoadXmlTask().execute(currentXmlUrl);
+                if (currentXmlUrls != null) {
+                    new LoadXmlTask().execute(currentXmlUrls);
                 }
                 return true;
             }
@@ -438,7 +564,7 @@ public class CategoryActivity extends Activity {
         return super.onKeyDown(keyCode, event);
     }
 
-    private class LoadXmlTask extends AsyncTask<String, Void, List<Movie>> {
+    private class LoadXmlTask extends AsyncTask<String[], Void, List<Movie>> {
         @Override
         protected void onPreExecute() {
             progressBar.setVisibility(View.VISIBLE);
@@ -446,11 +572,83 @@ public class CategoryActivity extends Activity {
         }
 
         @Override
-        protected List<Movie> doInBackground(String... urls) {
-            List<Movie> movies = new ArrayList<>();
+        protected List<Movie> doInBackground(String[]... urlsArray) {
+            List<Movie> allMoviesFromUrls = new ArrayList<>();
+            String[] urls = urlsArray[0];
+
+            // UČITAJ IZ SVIH XML FAJLOVA
+            for (String url : urls) {
+                try {
+                    List<Movie> moviesFromUrl = loadCategoryFromUrl(url);
+                    if (moviesFromUrl != null && !moviesFromUrl.isEmpty()) {
+                        allMoviesFromUrls.addAll(moviesFromUrl);
+                        Log.d("MULTI_XML", "Loaded " + moviesFromUrl.size() + " movies from: " + url);
+                    }
+                } catch (Exception e) {
+                    Log.e("MULTI_XML", "Error loading from URL: " + url, e);
+                }
+            }
+
+            return allMoviesFromUrls;
+        }
+
+        @Override
+        protected void onPostExecute(List<Movie> result) {
+            progressBar.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.VISIBLE);
+
+            if (result != null && !result.isEmpty()) {
+                // FILTRIRAJ FILMOVE PO JEZIKU
+                List<Movie> filteredMovies = filterMoviesByLanguage(result);
+
+                movieList.clear();
+                movieList.addAll(filteredMovies);
+
+                allMovies.clear();
+                allMovies.addAll(filteredMovies);
+
+                movieAdapter.notifyDataSetChanged();
+
+                // DEBUG: Proveri sve serije
+                int seriesCount = 0;
+                for (Movie movie : filteredMovies) {
+                    if ("serija".equalsIgnoreCase(movie.getType()) || "series".equalsIgnoreCase(movie.getType())) {
+                        seriesCount++;
+                        Log.d("POST_DEBUG", "Series: " + movie.getTitle() +
+                                " - Audio: " + movie.getAudioLanguage() +
+                                " - Captions: " + movie.getAvailableCaptions());
+                    }
+                }
+
+                Log.d("POST_DEBUG", "Total series found: " + seriesCount);
+                Log.d("LANGUAGE_FILTER", "Displaying " + filteredMovies.size() + " movies from " + result.size() + " total");
+
+                Toast.makeText(CategoryActivity.this, "Loaded " + movieList.size() + " video contents", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(CategoryActivity.this, "No video content available for selected languages", Toast.LENGTH_LONG).show();
+            }
+        }
+
+        // FILTRIRANJE FILMOVA PO JEZIKU
+        private List<Movie> filterMoviesByLanguage(List<Movie> movies) {
+            List<String> favoriteLangs = languageManager.getFavoriteLanguages();
+            List<Movie> filtered = new ArrayList<>();
+
+            for (Movie movie : movies) {
+                if (movie.hasPreferredLanguage(favoriteLangs)) {
+                    filtered.add(movie);
+                }
+            }
+
+            Log.d("LANGUAGE_FILTER", "Filtered " + filtered.size() + " movies from " + movies.size() + " total for languages: " + favoriteLangs);
+            return filtered;
+        }
+
+        private List<Movie> loadCategoryFromUrl(String urlString) {
+            List<Movie> moviesList = new ArrayList<>();
 
             try {
-                URL url = new URL(urls[0]);
+                URL url = new URL(urlString);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(15000);
@@ -467,166 +665,211 @@ public class CategoryActivity extends Activity {
                 String currentTag = null;
 
                 String title = "", year = "", genre = "", type = "film", description = "", imageUrl = "", videoId = "";
-                StringBuilder seasonsJsonBuilder = new StringBuilder();
-                boolean inSeasonsSection = false;
-                int seasonCount = 0;
-                int episodeCount = 0;
-                boolean inEpisode = false;
-                String currentImageUrl = "", currentVideoId = "", currentTitle = "";
+                String seasonsJson = "";
+                String availableCaptions = "";
+                String audioLanguage = "";
 
-                Log.d("XML_DEBUG", "=== START PARSING XML ===");
-                Log.d("XML_DEBUG", "XML URL: " + urls[0]);
+                // Varijable za parsiranje seasons sekcije
+                boolean inSeasonsSection = false;
+                boolean inSeason = false;
+                boolean inEpisode = false;
+
+                List<JSONObject> seasonsList = new ArrayList<>();
+                JSONObject currentSeason = null;
+                List<JSONObject> currentEpisodes = null;
+                int currentSeasonNumber = 0;
+                String episodeTitle = "", episodeImageUrl = "", episodeVideoId = "";
 
                 while (eventType != XmlPullParser.END_DOCUMENT) {
                     if (eventType == XmlPullParser.START_TAG) {
                         currentTag = parser.getName();
-                        Log.d("XML_DEBUG", "START_TAG: " + currentTag);
 
                         if ("movie".equals(currentTag)) {
-                            // Resetuj podatke
+                            // Resetuj podatke za novi film
                             title = ""; year = ""; genre = ""; type = "film";
                             description = ""; imageUrl = ""; videoId = "";
-                            seasonsJsonBuilder = new StringBuilder();
+                            seasonsJson = "";
+                            availableCaptions = "";
+                            audioLanguage = "";
                             inSeasonsSection = false;
-                            seasonCount = 0;
-                            episodeCount = 0;
+                            inSeason = false;
                             inEpisode = false;
-                            Log.d("XML_DEBUG", "--- NEW MOVIE ---");
+                            seasonsList.clear();
+                            currentSeason = null;
+                            currentEpisodes = null;
+                            currentSeasonNumber = 0;
+                            episodeTitle = ""; episodeImageUrl = ""; episodeVideoId = "";
+
                         } else if ("seasons".equals(currentTag)) {
                             inSeasonsSection = true;
-                            seasonsJsonBuilder.append("[");
-                            Log.d("XML_DEBUG", "ENTERING SEASONS SECTION");
-                        } else if ("season".equals(currentTag) && inSeasonsSection) {
-                            seasonCount++;
-                            episodeCount = 0;
-                            seasonsJsonBuilder.append(seasonCount > 1 ? "," : "");
-                            seasonsJsonBuilder.append("{\"number\":").append(seasonCount).append(",\"episodes\":[");
-                            Log.d("XML_DEBUG", "START SEASON " + seasonCount);
-                        } else if ("episode".equals(currentTag) && inSeasonsSection) {
-                            inEpisode = true;
-                            episodeCount++;
-                            seasonsJsonBuilder.append(episodeCount > 1 ? "," : "");
-                            seasonsJsonBuilder.append("{\"title\":\"\",\"imageUrl\":\"\",\"videoId\":\"\"");
-                            currentImageUrl = "";
-                            currentVideoId = "";
-                            currentTitle = "";
-                            Log.d("XML_DEBUG", "START EPISODE " + episodeCount);
+                            seasonsList.clear();
+
+                        } else if ("season".equals(currentTag)) {
+                            if (inSeasonsSection) {
+                                inSeason = true;
+                                currentSeasonNumber = Integer.parseInt(parser.getAttributeValue(null, "number"));
+                                currentEpisodes = new ArrayList<>();
+                                currentSeason = new JSONObject();
+                            }
+
+                        } else if ("episode".equals(currentTag)) {
+                            if (inSeason) {
+                                inEpisode = true;
+                                episodeTitle = "";
+                                episodeImageUrl = "";
+                                episodeVideoId = "";
+                            }
                         }
+
                     } else if (eventType == XmlPullParser.TEXT) {
                         if (currentTag != null) {
                             String text = parser.getText().trim();
 
-                            if (inSeasonsSection && inEpisode) {
-                                // U episodes sekciji - obrađujemo episode podatke
-                                if ("imageUrl".equals(currentTag)) {
-                                    currentImageUrl = text;
-                                    seasonsJsonBuilder.append(",\"imageUrl\":\"").append(text).append("\"");
-                                } else if ("videoId".equals(currentTag)) {
-                                    currentVideoId = text;
-                                    seasonsJsonBuilder.append(",\"videoId\":\"").append(text).append("\"");
-                                } else if ("title".equals(currentTag)) {
-                                    currentTitle = text;
-                                    seasonsJsonBuilder.append(",\"title\":\"").append(text).append("\"");
+                            if (inEpisode) {
+                                // Čitanje podataka epizode
+                                switch (currentTag) {
+                                    case "title":
+                                        episodeTitle = text;
+                                        break;
+                                    case "imageUrl":
+                                        episodeImageUrl = text;
+                                        break;
+                                    case "videoId":
+                                        episodeVideoId = text;
+                                        break;
                                 }
-                            } else if (inSeasonsSection) {
-                                // Ignoriši tekst van episode tagova u seasons sekciji
-                            } else {
-                                // Van seasons sekcije - osnovni podaci
+                            } else if (!inSeasonsSection) {
+                                // Čitanje osnovnih podataka filma (van seasons sekcije)
                                 switch (currentTag) {
                                     case "title":
                                         title = text;
-                                        Log.d("XML_DEBUG", "Title: " + text);
                                         break;
-                                    case "year": year = text; break;
-                                    case "genre": genre = text; break;
+                                    case "year":
+                                        year = text;
+                                        break;
+                                    case "genre":
+                                        genre = text;
+                                        break;
                                     case "type":
                                         type = text;
-                                        Log.d("XML_DEBUG", "Type: " + text);
                                         break;
-                                    case "description": description = text; break;
-                                    case "imageUrl": imageUrl = text; break;
-                                    case "videoId": videoId = text; break;
+                                    case "description":
+                                        description = text;
+                                        break;
+                                    case "imageUrl":
+                                        imageUrl = text;
+                                        break;
+                                    case "videoId":
+                                        videoId = text;
+                                        break;
+                                    case "available_captions":
+                                        availableCaptions = text;
+                                        break;
+                                    case "audio_language":
+                                        audioLanguage = text;
+                                        break;
                                 }
                             }
                         }
+
                     } else if (eventType == XmlPullParser.END_TAG) {
                         String tagName = parser.getName();
-                        Log.d("XML_DEBUG", "END_TAG: " + tagName);
 
-                        if ("episode".equals(tagName) && inSeasonsSection) {
-                            seasonsJsonBuilder.append("}");
-                            inEpisode = false;
-                            Log.d("XML_DEBUG", "END EPISODE - Image: " + currentImageUrl + ", Video: " + currentVideoId);
-                        } else if ("season".equals(tagName) && inSeasonsSection) {
-                            seasonsJsonBuilder.append("]}");
-                            Log.d("XML_DEBUG", "END SEASON " + seasonCount + " with " + episodeCount + " episodes");
-                        } else if ("seasons".equals(tagName)) {
-                            seasonsJsonBuilder.append("]");
-                            inSeasonsSection = false;
-                            Log.d("XML_DEBUG", "EXITING SEASONS SECTION");
-                            Log.d("XML_DEBUG", "Generated seasonsJson length: " + seasonsJsonBuilder.length());
-                            if (seasonsJsonBuilder.length() > 0) {
-                                Log.d("XML_DEBUG", "First 100 chars: " + seasonsJsonBuilder.substring(0, Math.min(seasonsJsonBuilder.length(), 100)));
+                        if ("episode".equals(tagName)) {
+                            if (inEpisode && currentEpisodes != null) {
+                                // Završi epizodu samo ako ima validne podatke
+                                if (!episodeVideoId.isEmpty()) {
+                                    try {
+                                        JSONObject episodeObj = new JSONObject();
+                                        episodeObj.put("title", episodeTitle);
+                                        episodeObj.put("imageUrl", episodeImageUrl);
+                                        episodeObj.put("videoId", episodeVideoId);
+                                        currentEpisodes.add(episodeObj);
+                                    } catch (Exception e) {
+                                        Log.e("EPISODE_ERROR", "Error creating episode JSON", e);
+                                    }
+                                }
+                                inEpisode = false;
                             }
+
+                        } else if ("season".equals(tagName)) {
+                            if (inSeason && currentSeason != null && currentEpisodes != null && !currentEpisodes.isEmpty()) {
+                                try {
+                                    currentSeason.put("number", currentSeasonNumber);
+                                    currentSeason.put("episodes", new JSONArray(currentEpisodes));
+                                    seasonsList.add(currentSeason);
+                                } catch (Exception e) {
+                                    Log.e("SEASON_ERROR", "Error creating season JSON", e);
+                                }
+                            }
+                            inSeason = false;
+                            currentSeason = null;
+                            currentEpisodes = null;
+
+                        } else if ("seasons".equals(tagName)) {
+                            // Završi seasons sekciju i kreiraj seasonsJson
+                            if (!seasonsList.isEmpty()) {
+                                try {
+                                    JSONArray seasonsArray = new JSONArray(seasonsList);
+                                    seasonsJson = seasonsArray.toString();
+                                    Log.d("SEASONS_JSON", "Generated seasonsJson for " + title + ": " + seasonsJson.length() + " chars");
+                                } catch (Exception e) {
+                                    Log.e("SEASONS_ERROR", "Error creating seasons JSON", e);
+                                }
+                            }
+                            inSeasonsSection = false;
+                            seasonsList.clear();
+
                         } else if ("movie".equals(tagName)) {
                             // Kraj filma - dodaj u listu
                             if (!title.isEmpty()) {
-                                String seasonsJson = seasonsJsonBuilder.length() > 0 ? seasonsJsonBuilder.toString() : "";
-                                Movie movie = new Movie(title, year, genre, type, description, imageUrl, videoId, null, seasonsJson);
-                                movies.add(movie);
+                                // Ako ima seasons podatke, postavi kao seriju
+                                if (!seasonsJson.isEmpty() || !seasonsList.isEmpty()) {
+                                    type = "serija";
 
-                                Log.d("XML_DEBUG", "=== MOVIE CREATED ===");
-                                Log.d("XML_DEBUG", "Final - Title: " + title + ", Type: " + type);
-                                Log.d("XML_DEBUG", "Final - SeasonsJson length: " + seasonsJson.length());
-                                Log.d("XML_DEBUG", "Seasons: " + seasonCount + ", Episodes: " + episodeCount);
+                                    // Ako nije postavljen seasonsJson iz seasons sekcije, kreiraj ga
+                                    if (seasonsJson.isEmpty() && !seasonsList.isEmpty()) {
+                                        try {
+                                            JSONArray seasonsArray = new JSONArray(seasonsList);
+                                            seasonsJson = seasonsArray.toString();
+                                        } catch (Exception e) {
+                                            Log.e("MOVIE_ERROR", "Error creating final seasons JSON", e);
+                                        }
+                                    }
+                                }
+
+                                // Kreiraj movie objekat sa novim poljima
+                                Movie movie = new Movie(title, year, genre, type, description, imageUrl, videoId, null, seasonsJson);
+                                movie.setAvailableCaptions(availableCaptions);
+                                movie.setAudioLanguage(audioLanguage);
+
+                                moviesList.add(movie);
+
+                                Log.d("MOVIE_LOADED", "Loaded: " + title +
+                                        " | Type: " + type +
+                                        " | Audio: " + audioLanguage +
+                                        " | Captions: " + availableCaptions +
+                                        " | Seasons: " + (!seasonsJson.isEmpty() ? seasonsJson.length() + " chars" : "none"));
                             }
+
+                            // Resetuj seasons podatke za sledeći film
+                            seasonsJson = "";
+                            seasonsList.clear();
+                            availableCaptions = "";
+                            audioLanguage = "";
                         }
+
                         currentTag = null;
                     }
                     eventType = parser.next();
                 }
 
                 inputStream.close();
-                Log.d("XML_DEBUG", "=== FINISHED PARSING XML ===");
-                Log.d("XML_DEBUG", "Total movies found: " + movies.size());
-
-                return movies;
+                return moviesList;
 
             } catch (Exception e) {
-                e.printStackTrace();
-                Log.e("XML_ERROR", "Error parsing XML: " + e.getMessage());
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(List<Movie> result) {
-            progressBar.setVisibility(View.GONE);
-            recyclerView.setVisibility(View.VISIBLE);
-
-            if (result != null && !result.isEmpty()) {
-                movieList.clear();
-                movieList.addAll(result);
-
-                allMovies.clear();
-                allMovies.addAll(result);
-
-                movieAdapter.notifyDataSetChanged();
-
-                // DEBUG: Proveri sve serije
-                int seriesCount = 0;
-                for (Movie movie : result) {
-                    if ("serija".equalsIgnoreCase(movie.getType()) || "series".equalsIgnoreCase(movie.getType())) {
-                        seriesCount++;
-                        Log.d("POST_DEBUG", "Series: " + movie.getTitle() + " - SeasonsJson length: " +
-                                (movie.getSeasonsJson() != null ? movie.getSeasonsJson().length() : "NULL"));
-                    }
-                }
-                Log.d("POST_DEBUG", "Total series found: " + seriesCount);
-
-                Toast.makeText(CategoryActivity.this, "Učitano " + movieList.size() + " video sadržaja", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(CategoryActivity.this, "Nema video sadržaja u ovoj kategoriji", Toast.LENGTH_LONG).show();
+                Log.e("CATEGORY_LOAD", "Error loading from URL: " + urlString, e);
+                return moviesList;
             }
         }
     }

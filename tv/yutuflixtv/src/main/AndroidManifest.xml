@@ -2,8 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Dozvole -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
+
+    <!-- Oznake uređaja: aplikacija podržava TV, ali ne zahteva touchscreen -->
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
@@ -16,30 +20,36 @@
         android:banner="@mipmap/banner_320x180"
         tools:targetApi="31">
 
-    <activity
-        android:name=".FavoritesActivity"
-        android:exported="false"
-        android:theme="@style/Theme.Leanback" />
+        <!-- AdMob ID (ako koristiš oglase, u suprotnom možeš izbrisati) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-9646614878051651~2086831967"/>
 
-    <activity
-        android:name=".PrivacyActivity"
-        android:exported="false"
-        android:theme="@style/Theme.Leanback" />
+        <!-- Aktivnosti -->
+        <activity
+            android:name=".FavoritesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Leanback" />
 
-    <activity
-        android:name=".CategoryActivity"
-        android:exported="false"
-        android:theme="@style/Theme.Leanback" />
+        <activity
+            android:name=".PrivacyActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Leanback" />
 
-    <activity
-        android:name=".DetailsActivityFilm"
-        android:exported="false"
-        android:theme="@style/Theme.Leanback" />
+        <activity
+            android:name=".CategoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Leanback" />
 
-    <activity
-        android:name=".DetailsActivitySeries"
-        android:exported="false"
-        android:theme="@style/Theme.Leanback" />
+        <activity
+            android:name=".DetailsActivityFilm"
+            android:exported="false"
+            android:theme="@style/Theme.Leanback" />
+
+        <activity
+            android:name=".DetailsActivitySeries"
+            android:exported="false"
+            android:theme="@style/Theme.Leanback" />
 
         <activity
             android:name=".PlayerActivity"
@@ -49,18 +59,22 @@
             android:screenOrientation="landscape"
             android:hardwareAccelerated="true" />
 
-    <activity
-        android:name=".MainActivity"
-        android:exported="true"
-        android:label="YuTuFlix Balkan TV"
-        android:banner="@mipmap/banner_320x180">
+        <!-- Glavna TV aktivnost -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="YuTuFlix Balkan TV"
+            android:banner="@mipmap/banner_320x180"
+            android:launchMode="singleTask">
 
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-        </intent-filter>
-    </activity>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <!-- Ovo čini aplikaciju TV-launchable -->
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
-</application>
+    </application>
 
-    </manifest>
+</manifest>

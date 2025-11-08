@@ -9,21 +9,105 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.interstitial.InterstitialAd;
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.initialization.InitializationStatus;
+import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 
 public class PlayerActivity extends Activity {
 
     private WebView webView;
+    private InterstitialAd interstitialAd;
+    private boolean isAdLoaded = false;
+    private boolean isBackPressed = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player_tv);
 
+        // Initialize AdMob
+        initializeAdMob();
+
         // Sakrij status bar i navigation bar
         hideSystemUI();
 
         setupWebView();
         loadVideo();
+    }
+
+    private void initializeAdMob() {
+        MobileAds.initialize(this, new OnInitializationCompleteListener() {
+            @Override
+            public void onInitializationComplete(InitializationStatus initializationStatus) {
+                Log.d("ADMOB", "AdMob initialized");
+                loadInterstitialAd();
+            }
+        });
+    }
+
+    private void loadInterstitialAd() {
+        // Test interstitial ad unit ID
+        String adUnitId = "ca-app-pub-9646614878051651/4205297918";
+
+        AdRequest adRequest = new AdRequest.Builder().build();
+
+        InterstitialAd.load(this, adUnitId, adRequest, new InterstitialAdLoadCallback() {
+            @Override
+            public void onAdLoaded(InterstitialAd interstitial) {
+                Log.d("ADMOB", "Interstitial ad loaded");
+                interstitialAd = interstitial;
+                isAdLoaded = true;
+
+                // Set ad events
+                interstitialAd.setFullScreenContentCallback(new com.google.android.gms.ads.FullScreenContentCallback() {
+                    @Override
+                    public void onAdDismissedFullScreenContent() {
+                        Log.d("ADMOB", "Interstitial ad dismissed");
+                        // Continue with app flow after ad is dismissed
+                        if (isBackPressed) {
+                            finish();
+                        }
+                        // Load next interstitial ad
+                        loadInterstitialAd();
+                    }
+
+                    @Override
+                    public void onAdFailedToShowFullScreenContent(com.google.android.gms.ads.AdError adError) {
+                        Log.e("ADMOB", "Interstitial ad failed to show: " + adError.getMessage());
+                        if (isBackPressed) {
+                            finish();
+                        }
+                    }
+
+                    @Override
+                    public void onAdShowedFullScreenContent() {
+                        Log.d("ADMOB", "Interstitial ad showed");
+                        interstitialAd = null;
+                        isAdLoaded = false;
+                    }
+                });
+            }
+
+            @Override
+            public void onAdFailedToLoad(com.google.android.gms.ads.LoadAdError loadAdError) {
+                Log.e("ADMOB", "Interstitial ad failed to load: " + loadAdError.getMessage());
+                interstitialAd = null;
+                isAdLoaded = false;
+            }
+        });
+    }
+
+    private void showInterstitialAd() {
+        if (interstitialAd != null && isAdLoaded) {
+            Log.d("ADMOB", "Showing interstitial ad");
+            interstitialAd.show(this);
+        } else {
+            Log.d("ADMOB", "Interstitial ad not ready, finishing activity");
+            finish();
+        }
     }
 
     private void setupWebView() {
@@ -219,6 +303,14 @@ public class PlayerActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        finish();
+        Log.d("ADMOB", "Back pressed, showing interstitial ad");
+        isBackPressed = true;
+
+        // Pause video before showing ad
+        if (webView != null) {
+            webView.loadUrl("javascript:if(window.player) player.pauseVideo();");
+        }
+
+        showInterstitialAd();
     }
 }

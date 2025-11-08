@@ -1,7 +1,6 @@
 package com.ssait.yutuflixbalkan;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -53,20 +52,10 @@ public class CategoryActivity extends AppCompatActivity {
     String categoryName;
     String xmlUrl;
 
-    // TRAJNO SKLADIŠTENJE BLOKIRANIH VIDEO ID-JEVA
-    private SharedPreferences blockedVideosPrefs;
-    private CacheManager cacheManager;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_category);
-
-        // INICIJALIZUJ TRAJNO SKLADIŠTE BLOKIRANIH VIDEO ID-JEVA
-        initializeBlockedVideos();
-
-        // INICIJALIZUJ CACHE MANAGER
-        cacheManager = new CacheManager(this);
 
         categoryRecycler = findViewById(R.id.categoryRecyclerView);
         searchBar = findViewById(R.id.searchBar);
@@ -109,30 +98,19 @@ public class CategoryActivity extends AppCompatActivity {
         movieAdapter = new MovieAdapter(this, new ArrayList<>());
         categoryRecycler.setAdapter(movieAdapter);
 
-        // INSTANT UČITAVANJE KATEGORIJE
-        loadCategoryInstant();
+        // UČITAJ KATEGORIJU
+        loadCategory();
 
         // POSTAVI OSTALE ELEMENTE
         setupSearchAndButtons();
     }
 
-    // INSTANT UČITAVANJE KATEGORIJE
-    private void loadCategoryInstant() {
+    // UČITAVANJE KATEGORIJE
+    private void loadCategory() {
         showLoading();
         setLoadingText("Učitavam " + categoryName + "...");
 
-        new CategoryInstantLoadTask(this, categoryName, xmlUrl, blockedVideosPrefs, cacheManager).execute();
-    }
-
-    // UČITAVANJE KATEGORIJE SA INTERNETA
-    private void loadCategoryFromInternet() {
-        setLoadingText("Preuzimam " + categoryName + " sa interneta...");
-        new CategoryInternetLoadTask(this, categoryName, xmlUrl, blockedVideosPrefs, cacheManager).execute();
-    }
-
-    // PROVERA AŽURIRANJA KATEGORIJE U POZADINI
-    private void checkCategoryUpdatesInBackground() {
-        new CategoryBackgroundUpdateTask(this, categoryName, xmlUrl, blockedVideosPrefs, cacheManager).execute();
+        new LoadCategoryTask().execute();
     }
 
     // UCITAJ PRVU STRANU
@@ -148,8 +126,6 @@ public class CategoryActivity extends AppCompatActivity {
         movieAdapter = new MovieAdapter(this, movies);
         categoryRecycler.setAdapter(movieAdapter);
         hasMoreData = endIndex < allMovies.size();
-
-        Toast.makeText(this, "Učitano " + movies.size() + " filmova", Toast.LENGTH_SHORT).show();
     }
 
     // UCITAJ SLEDECU STRANU
@@ -163,7 +139,7 @@ public class CategoryActivity extends AppCompatActivity {
         new LoadNextPageTask(this).execute();
     }
 
-    // PARSIRANJE FILMA
+    // PARSIRANJE FILMA - KOMPLEKSNA OBRADA SEZONA I EPIZODA
     private Movie parseMovieFromElement(Element mEl) {
         try {
             String title = mEl.selectFirst("title") != null ? mEl.selectFirst("title").text() : "";
@@ -181,6 +157,7 @@ public class CategoryActivity extends AppCompatActivity {
             List<Season> seasons = null;
             String seasonsJson = null;
 
+            // KOMPLEKSNA OBRADA SEZONA I EPIZODA ZA SERIJE
             if ("serija".equalsIgnoreCase(type) || "series".equalsIgnoreCase(type)) {
                 Elements seasonsEls = mEl.select("seasons > season");
                 if (!seasonsEls.isEmpty()) {
@@ -201,7 +178,8 @@ public class CategoryActivity extends AppCompatActivity {
                             String epImage = epEl.selectFirst("imageUrl") != null ? epEl.selectFirst("imageUrl").text() : "";
                             String epVideoId = epEl.selectFirst("videoId") != null ? epEl.selectFirst("videoId").text() : "";
 
-                            if (!isVideoPermanentlyBlocked(epVideoId)) {
+                            // DODAJ EPIZODU SAMO AKO IMA VALIDNE PODATKE
+                            if (!epVideoId.isEmpty()) {
                                 episodes.add(new Episode(epTitle, epImage, epVideoId));
                                 JSONObject eObj = new JSONObject();
                                 try {
@@ -258,15 +236,7 @@ public class CategoryActivity extends AppCompatActivity {
         });
     }
 
-    private void initializeBlockedVideos() {
-        blockedVideosPrefs = getSharedPreferences("blocked_videos", MODE_PRIVATE);
-    }
-
-    private boolean isVideoPermanentlyBlocked(String videoId) {
-        return videoId == null || videoId.isEmpty() || blockedVideosPrefs.getBoolean(videoId, false);
-    }
-
-    // ✅ POPRAVLJENA PRETRAGA - SADA RADI SA CACHE I INTERNET PODACIMA
+    // ✅ POPRAVLJENA PRETRAGA
     private void setupSearchAndButtons() {
         // PRETRAGA
         findViewById(R.id.searchBtn).setOnClickListener(v -> {
@@ -290,14 +260,12 @@ public class CategoryActivity extends AppCompatActivity {
 
             // ✅ PRIKAŽI REZULTATE PRETRAGE
             if (searchResults.isEmpty()) {
-                Toast.makeText(this, "Nema rezultata za: '" + query + "'", Toast.LENGTH_SHORT).show();
                 // ✅ PRIKAŽI PRAZNU LISTU UMESTO ORIGINALNE
                 movieAdapter = new MovieAdapter(this, new ArrayList<>());
                 categoryRecycler.setAdapter(movieAdapter);
             } else {
                 movieAdapter = new MovieAdapter(this, searchResults);
                 categoryRecycler.setAdapter(movieAdapter);
-                Toast.makeText(this, "Pronađeno " + searchResults.size() + " filmova", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -460,214 +428,72 @@ public class CategoryActivity extends AppCompatActivity {
 
     // DODAJ METODU ZA MANUELNO AŽURIRANJE
     public void onRefreshClick(View view) {
-        String cacheKey = "category_" + categoryName.replace(" ", "_").toLowerCase() + "_permanent_v1";
-        cacheManager.forceCacheUpdate(cacheKey);
-        loadCategoryFromInternet();
-        Toast.makeText(this, "Ažuriram podatke...", Toast.LENGTH_SHORT).show();
+        loadCategory();
     }
 
-    // STATIČKE ASYNCTASK KLASE
+    // TASK KLASA ZA UČITAVANJE KATEGORIJE
+    private class LoadCategoryTask extends AsyncTask<Void, Void, List<Movie>> {
 
-    private static class CategoryInstantLoadTask extends AsyncTask<Void, Void, Boolean> {
-        private final WeakReference<CategoryActivity> activityReference;
-        private final String categoryName;
-        private final String xmlUrl;
-        private final SharedPreferences blockedVideosPrefs;
-        private final CacheManager cacheManager;
-
-        CategoryInstantLoadTask(CategoryActivity activity, String categoryName, String xmlUrl,
-                                SharedPreferences blockedVideosPrefs, CacheManager cacheManager) {
-            this.activityReference = new WeakReference<>(activity);
-            this.categoryName = categoryName;
-            this.xmlUrl = xmlUrl;
-            this.blockedVideosPrefs = blockedVideosPrefs;
-            this.cacheManager = cacheManager;
+        @Override
+        protected void onPreExecute() {
+            showLoading();
+            setLoadingText("Učitavam " + categoryName + "...");
         }
 
         @Override
-        protected Boolean doInBackground(Void... voids) {
-            CategoryActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return false;
+        protected List<Movie> doInBackground(Void... voids) {
+            List<Movie> moviesList = new ArrayList<>();
 
             try {
-                // PRVO POKUŠAJ CACHE
-                String cacheKey = "category_" + categoryName.replace(" ", "_").toLowerCase() + "_permanent_v1";
-                String cachedXml = cacheManager.readFromCache(cacheKey + "_filtered");
+                Document doc = Jsoup.connect(xmlUrl)
+                        .timeout(10000) // Smanjen timeout na 10 sekundi
+                        .parser(Parser.xmlParser())
+                        .get();
 
-                if (cachedXml != null && !cachedXml.isEmpty()) {
-                    Document doc = Jsoup.parse(cachedXml, "", Parser.xmlParser());
-                    Elements movieEls = doc.select("category > movie, movie");
-
-                    List<Movie> cachedMovies = new ArrayList<>();
-                    for (Element mEl : movieEls) {
-                        Movie movie = activity.parseMovieFromElement(mEl);
-                        if (movie != null && !activity.isVideoPermanentlyBlocked(movie.getVideoId())) {
-                            cachedMovies.add(movie);
-                        }
-                    }
-
-                    // ✅ POPUNI allMovies LISTU ZA PRETRAGU
-                    activity.runOnUiThread(() -> {
-                        activity.movies.clear();
-                        activity.movies.addAll(cachedMovies);
-                        activity.allMovies.clear(); // ✅ OČISTI PRVO
-                        activity.allMovies.addAll(cachedMovies); // ✅ POPUNI allMovies
-                        activity.movieAdapter = new MovieAdapter(activity, activity.movies);
-                        activity.categoryRecycler.setAdapter(activity.movieAdapter);
-                        activity.hideLoading();
-
-                        Toast.makeText(activity,
-                                "Učitano " + activity.movies.size() + " filmova iz memorije",
-                                Toast.LENGTH_SHORT).show();
-                    });
-
-                    return true;
-                }
-
-                return false;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Boolean hasCache) {
-            CategoryActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return;
-
-            if (!hasCache) {
-                activity.loadCategoryFromInternet();
-            } else {
-                // PROVERI AŽURIRANJA U POZADINI
-                activity.checkCategoryUpdatesInBackground();
-            }
-        }
-    }
-
-    private static class CategoryInternetLoadTask extends AsyncTask<Void, Void, Boolean> {
-        private final WeakReference<CategoryActivity> activityReference;
-        private final String categoryName;
-        private final String xmlUrl;
-        private final SharedPreferences blockedVideosPrefs;
-        private final CacheManager cacheManager;
-
-        CategoryInternetLoadTask(CategoryActivity activity, String categoryName, String xmlUrl,
-                                 SharedPreferences blockedVideosPrefs, CacheManager cacheManager) {
-            this.activityReference = new WeakReference<>(activity);
-            this.categoryName = categoryName;
-            this.xmlUrl = xmlUrl;
-            this.blockedVideosPrefs = blockedVideosPrefs;
-            this.cacheManager = cacheManager;
-        }
-
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-            CategoryActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return false;
-
-            try {
-                String cacheKey = "category_" + categoryName.replace(" ", "_").toLowerCase() + "_permanent_v1";
-                String xmlContent = cacheManager.getFilteredXml(xmlUrl, cacheKey, blockedVideosPrefs);
-
-                if (xmlContent == null || xmlContent.isEmpty()) {
-                    return false;
-                }
-
-                Document doc = Jsoup.parse(xmlContent, "", Parser.xmlParser());
                 Elements movieEls = doc.select("category > movie, movie");
 
-                List<Movie> newMovies = new ArrayList<>();
                 for (Element mEl : movieEls) {
-                    Movie movie = activity.parseMovieFromElement(mEl);
-                    if (movie != null && !activity.isVideoPermanentlyBlocked(movie.getVideoId())) {
-                        newMovies.add(movie);
+                    try {
+                        Movie movie = parseMovieFromElement(mEl);
+                        if (movie != null) {
+                            moviesList.add(movie);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
 
-                // ✅ POPUNI allMovies LISTU ZA PRETRAGU
-                activity.runOnUiThread(() -> {
-                    activity.movies.clear();
-                    activity.movies.addAll(newMovies);
-                    activity.allMovies.clear(); // ✅ OČISTI PRVO
-                    activity.allMovies.addAll(newMovies); // ✅ POPUNI allMovies
-                    activity.movieAdapter = new MovieAdapter(activity, activity.movies);
-                    activity.categoryRecycler.setAdapter(activity.movieAdapter);
-                    activity.hideLoading();
-
-                    Toast.makeText(activity,
-                            "Učitano " + activity.movies.size() + " filmova sa interneta",
-                            Toast.LENGTH_SHORT).show();
-                });
-
-                return true;
+                return moviesList;
 
             } catch (Exception e) {
                 e.printStackTrace();
-                return false;
+                return moviesList;
             }
         }
 
         @Override
-        protected void onPostExecute(Boolean success) {
-            CategoryActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return;
+        protected void onPostExecute(List<Movie> result) {
+            hideLoading();
 
-            if (!success) {
-                activity.hideLoading();
-                Toast.makeText(activity, "Greška pri učitavanju", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
+            if (result != null && !result.isEmpty()) {
+                movies.clear();
+                movies.addAll(result);
+                allMovies.clear();
+                allMovies.addAll(result);
 
-    private static class CategoryBackgroundUpdateTask extends AsyncTask<Void, Void, Boolean> {
-        private final WeakReference<CategoryActivity> activityReference;
-        private final String categoryName;
-        private final String xmlUrl;
-        private final SharedPreferences blockedVideosPrefs;
-        private final CacheManager cacheManager;
+                movieAdapter = new MovieAdapter(CategoryActivity.this, movies);
+                categoryRecycler.setAdapter(movieAdapter);
 
-        CategoryBackgroundUpdateTask(CategoryActivity activity, String categoryName, String xmlUrl,
-                                     SharedPreferences blockedVideosPrefs, CacheManager cacheManager) {
-            this.activityReference = new WeakReference<>(activity);
-            this.categoryName = categoryName;
-            this.xmlUrl = xmlUrl;
-            this.blockedVideosPrefs = blockedVideosPrefs;
-            this.cacheManager = cacheManager;
-        }
+                // JEDINO OBAVEŠTENJE: Broj dostupnih video sadržaja
+                Toast.makeText(CategoryActivity.this,
+                        "Dostupno " + movies.size() + " video sadržaja",
+                        Toast.LENGTH_SHORT).show();
 
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-            CategoryActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return false;
-
-            try {
-                String cacheKey = "category_" + categoryName.replace(" ", "_").toLowerCase() + "_permanent_v1";
-
-                if (cacheManager.shouldUpdateCache(cacheKey)) {
-                    String xmlContent = cacheManager.getFilteredXml(xmlUrl, cacheKey, blockedVideosPrefs);
-
-                    if (xmlContent != null && !xmlContent.isEmpty()) {
-                        Document doc = Jsoup.parse(xmlContent, "", Parser.xmlParser());
-                        Elements movieEls = doc.select("category > movie, movie");
-
-                        final int newMovieCount = movieEls.size();
-
-                        activity.runOnUiThread(() -> {
-                            Toast.makeText(activity,
-                                    "Ažurirani filmovi u pozadini (" + newMovieCount + " filmova)",
-                                    Toast.LENGTH_SHORT).show();
-                        });
-
-                        return true;
-                    }
-                }
-
-                return false;
-
-            } catch (Exception e) {
-                return false;
+            } else {
+                // Očisti prikaz ako nema podataka
+                movies.clear();
+                allMovies.clear();
+                movieAdapter.notifyDataSetChanged();
             }
         }
     }
@@ -722,11 +548,6 @@ public class CategoryActivity extends AppCompatActivity {
             activity.movieAdapter.notifyItemRangeInserted(startPosition, newMovies.size());
 
             activity.hasMoreData = endIndex < allMoviesList.size();
-
-            if (activity.hasMoreData) {
-                Toast.makeText(activity,
-                        "Dodato " + newMovies.size() + " filmova", Toast.LENGTH_SHORT).show();
-            }
         }
     }
 }

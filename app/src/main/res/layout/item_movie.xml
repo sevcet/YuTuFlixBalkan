@@ -16,8 +16,8 @@
         <ImageView
             android:id="@+id/movieImage"
             android:layout_width="match_parent"
-            android:layout_height="225dp"
-            android:scaleType="centerCrop"/>
+            android:layout_height="99dp"
+            android:scaleType="centerCrop" />
 
         <TextView
             android:id="@+id/movieTitle"

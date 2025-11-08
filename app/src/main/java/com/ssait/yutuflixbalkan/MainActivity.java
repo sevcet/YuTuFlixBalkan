@@ -1,7 +1,6 @@
 package com.ssait.yutuflixbalkan;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -29,9 +28,13 @@ import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -45,30 +48,27 @@ public class MainActivity extends AppCompatActivity {
     LinearLayout loadingContainer;
     TextView loadingText;
 
-    // PAGINATION VARIJABLE
-    private static final int PAGE_SIZE = 20;
-    private int currentPage = 0;
-    private boolean isLoading = false;
-    private boolean hasMoreData = true;
-    private List<CategoryData> allCategories = new ArrayList<>();
+    // KATEGORIJE SA SPOLJNIM XML LINKOVIMA - FIKSNI REDOSLED
+    private final LinkedHashMap<String, String> categoryMap = new LinkedHashMap<String, String>() {{
+        put("Domaci Filmovi", "https://sevcet.github.io/exyuflix/domaci_filmovi.xml");
+        put("Domace Serije", "https://sevcet.github.io/exyuflix/domace_serije.xml");
+        put("Akcija", "https://sevcet.github.io/exyuflix/akcija.xml");
+        put("Komedija", "https://sevcet.github.io/exyuflix/komedija.xml");
+        put("Horor", "https://sevcet.github.io/exyuflix/horor.xml");
+        put("Sci-Fi", "https://sevcet.github.io/exyuflix/sci_fi.xml");
+        put("Romansa", "https://sevcet.github.io/exyuflix/romansa.xml");
+        put("Misterija", "https://sevcet.github.io/exyuflix/misterija.xml");
+        put("Dokumentarni", "https://sevcet.github.io/exyuflix/dokumentarni.xml");
+        put("Animirani", "https://sevcet.github.io/exyuflix/animirani.xml");
+    }};
 
-    // TRAJNO SKLADIŠTENJE BLOKIRANIH VIDEO ID-JEVA
-    private SharedPreferences blockedVideosPrefs;
-    private CacheManager cacheManager;
-
-    // VRATI NA ORIGINALNI XML SA FILMOVIMA
-    String xmlUrl = "https://sevcet.github.io/yutuflixapp.xml";
+    // Executor za paralelno učitavanje
+    private ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        // INICIJALIZUJ TRAJNO SKLADIŠTE BLOKIRANIH VIDEO ID-JEVA
-        initializeBlockedVideos();
-
-        // INICIJALIZUJ CACHE MANAGER
-        cacheManager = new CacheManager(this);
 
         categoryRecycler = findViewById(R.id.categoryRecyclerView);
         searchBar = findViewById(R.id.searchBar);
@@ -76,150 +76,21 @@ public class MainActivity extends AppCompatActivity {
         loadingProgress = findViewById(R.id.loadingProgress);
         loadingText = findViewById(R.id.loadingText);
 
-        // PAGINATION SCROLL LISTENER
-        categoryRecycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-
-                LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-                int visibleItemCount = layoutManager.getChildCount();
-                int totalItemCount = layoutManager.getItemCount();
-                int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
-
-                if (!isLoading && hasMoreData && dy > 0) {
-                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount
-                            && firstVisibleItemPosition >= 0) {
-                        loadNextPage();
-                    }
-                }
-            }
-        });
-
         // Početni prikaz kategorija
         categoryRecycler.setLayoutManager(new LinearLayoutManager(this));
         categoryAdapter = new CategoryAdapter(this, categories);
         categoryRecycler.setAdapter(categoryAdapter);
 
-        // INSTANT UČITAVANJE - PRVO POKUŠAJ CACHE
-        loadInstantData();
+        // UČITAJ SVE KATEGORIJE
+        loadAllCategories();
 
         // Dugmad kategorija
         setupCategoryButtons();
     }
 
-    // INSTANT UČITAVANJE - PRVO POKUŠAJ CACHE
-    private void loadInstantData() {
-        showLoading();
-        setLoadingText("Učitavam filmove...");
-
-        new InstantLoadTask(this, xmlUrl, blockedVideosPrefs, cacheManager).execute();
-    }
-
-    // UČITAVANJE SA INTERNETA
-    private void loadXmlFromInternet() {
-        setLoadingText("Preuzimam nove filmove...");
-        new InternetLoadTask(this, xmlUrl, blockedVideosPrefs, cacheManager).execute();
-    }
-
-    // PROVERA AŽURIRANJA U POZADINI
-    private void checkForUpdatesInBackground() {
-        new BackgroundUpdateTask(this, xmlUrl, blockedVideosPrefs, cacheManager).execute();
-    }
-
-    // UCITAJ PRVU STRANU
-    private void loadFirstPage() {
-        currentPage = 0;
-        categories.clear();
-
-        int endIndex = Math.min(PAGE_SIZE, allCategories.size());
-        if (endIndex > 0) {
-            categories.addAll(allCategories.subList(0, endIndex));
-        }
-
-        categoryAdapter.notifyDataSetChanged();
-        hasMoreData = endIndex < allCategories.size();
-
-        Toast.makeText(this, "Učitano " + categories.size() + " kategorija", Toast.LENGTH_SHORT).show();
-    }
-
-    // UCITAJ SLEDECU STRANU
-    private void loadNextPage() {
-        if (isLoading || !hasMoreData) return;
-
-        isLoading = true;
-        showLoading();
-        setLoadingText("Učitavam još kategorija...");
-
-        new LoadNextPageTask(this).execute();
-    }
-
-    // PARSIRANJE FILMA IZ ELEMENTA
-    private Movie parseMovieFromElement(Element mEl) {
-        try {
-            String title = mEl.selectFirst("title") != null ? mEl.selectFirst("title").text() : "";
-            String year = mEl.selectFirst("year") != null ? mEl.selectFirst("year").text() : "";
-            String genre = mEl.selectFirst("genre") != null ? mEl.selectFirst("genre").text() : "";
-            String type = mEl.selectFirst("type") != null ? mEl.selectFirst("type").text() : "film";
-            String description = mEl.selectFirst("description") != null ? mEl.selectFirst("description").text() : "";
-            String imageUrl = mEl.selectFirst("imageUrl") != null ? mEl.selectFirst("imageUrl").text() : "";
-            String videoId = mEl.selectFirst("videoId") != null ? mEl.selectFirst("videoId").text() : "";
-
-            if (title.isEmpty() || videoId.isEmpty()) {
-                return null;
-            }
-
-            List<Season> seasons = null;
-            String seasonsJson = null;
-
-            if ("serija".equalsIgnoreCase(type) || "series".equalsIgnoreCase(type)) {
-                Elements seasonsEls = mEl.select("seasons > season");
-                if (!seasonsEls.isEmpty()) {
-                    seasons = new ArrayList<>();
-                    JSONArray sArray = new JSONArray();
-                    for (Element sEl : seasonsEls) {
-                        int seasonNumber = 1;
-                        try {
-                            seasonNumber = Integer.parseInt(sEl.attr("number"));
-                        } catch (Exception ignored) {}
-
-                        Elements episodeEls = sEl.select("episode");
-                        List<Episode> episodes = new ArrayList<>();
-                        JSONArray eArray = new JSONArray();
-
-                        for (Element epEl : episodeEls) {
-                            String epTitle = epEl.selectFirst("title") != null ? epEl.selectFirst("title").text() : "";
-                            String epImage = epEl.selectFirst("imageUrl") != null ? epEl.selectFirst("imageUrl").text() : "";
-                            String epVideoId = epEl.selectFirst("videoId") != null ? epEl.selectFirst("videoId").text() : "";
-
-                            if (!isVideoPermanentlyBlocked(epVideoId)) {
-                                episodes.add(new Episode(epTitle, epImage, epVideoId));
-                                JSONObject eObj = new JSONObject();
-                                eObj.put("title", epTitle);
-                                eObj.put("imageUrl", epImage);
-                                eObj.put("videoId", epVideoId);
-                                eArray.put(eObj);
-                            }
-                        }
-
-                        if (!episodes.isEmpty()) {
-                            seasons.add(new Season(seasonNumber, episodes));
-                            JSONObject sObj = new JSONObject();
-                            sObj.put("number", seasonNumber);
-                            sObj.put("episodes", eArray);
-                            sArray.put(sObj);
-                        }
-                    }
-                    seasonsJson = sArray.toString();
-                }
-            }
-
-            return new Movie(title, year, genre, type, description, imageUrl, videoId, seasons, seasonsJson);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+    // UČITAVANJE SVIH KATEGORIJA
+    private void loadAllCategories() {
+        new LoadAllCategoriesTask().execute();
     }
 
     // LOADING METODE
@@ -245,14 +116,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void initializeBlockedVideos() {
-        blockedVideosPrefs = getSharedPreferences("blocked_videos", MODE_PRIVATE);
-    }
-
-    private boolean isVideoPermanentlyBlocked(String videoId) {
-        return videoId == null || videoId.isEmpty() || blockedVideosPrefs.getBoolean(videoId, false);
-    }
-
     private void setupCategoryButtons() {
         Button btnDomaci_filmovi = findViewById(R.id.btnDomaci_filmovi);
         Button btnDomace_serije = findViewById(R.id.btnDomace_serije);
@@ -270,8 +133,8 @@ public class MainActivity extends AppCompatActivity {
         Button btnShare = findViewById(R.id.btnShare);
 
         // Svako dugme sada vodi na svoj XML fajl
-        btnDomaci_filmovi.setOnClickListener(v -> openCategory("Domaci filmovi", "https://sevcet.github.io/exyuflix/domaci_filmovi.xml"));
-        btnDomace_serije.setOnClickListener(v -> openCategory("Domace serije", "https://sevcet.github.io/exyuflix/domace_serije.xml"));
+        btnDomaci_filmovi.setOnClickListener(v -> openCategory("Domaci Filmovi", "https://sevcet.github.io/exyuflix/domaci_filmovi.xml"));
+        btnDomace_serije.setOnClickListener(v -> openCategory("Domace Serije", "https://sevcet.github.io/exyuflix/domace_serije.xml"));
         btnAkcija.setOnClickListener(v -> openCategory("Akcija", "https://sevcet.github.io/exyuflix/akcija.xml"));
         btnKomedija.setOnClickListener(v -> openCategory("Komedija", "https://sevcet.github.io/exyuflix/komedija.xml"));
         btnHoror.setOnClickListener(v -> openCategory("Horor", "https://sevcet.github.io/exyuflix/horor.xml"));
@@ -385,286 +248,214 @@ public class MainActivity extends AppCompatActivity {
 
     // DODAJ METODU ZA MANUELNO AŽURIRANJE
     public void onRefreshClick(View view) {
-        String cacheKey = "main_xml_permanent_v1";
-        cacheManager.forceCacheUpdate(cacheKey);
-        loadXmlFromInternet();
-        Toast.makeText(this, "Ažuriram podatke...", Toast.LENGTH_SHORT).show();
+        loadAllCategories();
     }
 
-    // STATIČKE ASYNCTASK KLASE
-
-    private static class InstantLoadTask extends AsyncTask<Void, Void, Boolean> {
-        private WeakReference<MainActivity> activityReference;
-        private String xmlUrl;
-        private SharedPreferences blockedVideosPrefs;
-        private CacheManager cacheManager;
-
-        InstantLoadTask(MainActivity activity, String xmlUrl, SharedPreferences blockedVideosPrefs, CacheManager cacheManager) {
-            this.activityReference = new WeakReference<>(activity);
-            this.xmlUrl = xmlUrl;
-            this.blockedVideosPrefs = blockedVideosPrefs;
-            this.cacheManager = cacheManager;
-        }
-
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-            MainActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return false;
-
-            try {
-                // PRVO POKUŠAJ DA UČITAŠ IZ CACHE-A
-                String cacheKey = "main_xml_permanent_v1";
-                String cachedXml = cacheManager.readFromCache(cacheKey + "_filtered");
-
-                if (cachedXml != null && !cachedXml.isEmpty()) {
-                    // IMAMO CACHE - PARSIRAJ GA
-                    Document doc = Jsoup.parse(cachedXml, "", Parser.xmlParser());
-                    Elements categoryEls = doc.select("movies > category, category");
-
-                    List<CategoryData> cachedCategories = new ArrayList<>();
-                    List<Movie> cachedMovies = new ArrayList<>();
-
-                    for (Element catEl : categoryEls) {
-                        String catName = catEl.attr("name");
-                        Elements movieEls = catEl.select("movie");
-
-                        List<Movie> movies = new ArrayList<>();
-                        for (Element mEl : movieEls) {
-                            Movie movie = activity.parseMovieFromElement(mEl);
-                            if (movie != null && !activity.isVideoPermanentlyBlocked(movie.getVideoId())) {
-                                movies.add(movie);
-                                cachedMovies.add(movie);
-                            }
-                        }
-
-                        if (!movies.isEmpty()) {
-                            cachedCategories.add(new CategoryData(catName, movies));
-                        }
-                    }
-
-                    // POSTAVI CACHE PODATKE
-                    activity.runOnUiThread(() -> {
-                        activity.categories.clear();
-                        activity.categories.addAll(cachedCategories);
-                        activity.allMovies.clear();
-                        activity.allMovies.addAll(cachedMovies);
-                        activity.categoryAdapter.notifyDataSetChanged();
-                        activity.hideLoading();
-
-                        Toast.makeText(activity,
-                                "Učitano " + activity.categories.size() + " kategorija iz memorije",
-                                Toast.LENGTH_SHORT).show();
-                    });
-
-                    return true;
-                }
-
-                return false;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Boolean hasCache) {
-            MainActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return;
-
-            // AKO NEMA CACHE-A, PREUZMI SA INTERNETA
-            if (!hasCache) {
-                activity.loadXmlFromInternet();
-            } else {
-                // PROVERI AŽURIRANJA U POZADINI
-                activity.checkForUpdatesInBackground();
-            }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdown();
         }
     }
 
-    private static class InternetLoadTask extends AsyncTask<Void, Void, Boolean> {
-        private WeakReference<MainActivity> activityReference;
-        private String xmlUrl;
-        private SharedPreferences blockedVideosPrefs;
-        private CacheManager cacheManager;
-
-        InternetLoadTask(MainActivity activity, String xmlUrl, SharedPreferences blockedVideosPrefs, CacheManager cacheManager) {
-            this.activityReference = new WeakReference<>(activity);
-            this.xmlUrl = xmlUrl;
-            this.blockedVideosPrefs = blockedVideosPrefs;
-            this.cacheManager = cacheManager;
-        }
+    // TASK KLASA ZA UČITAVANJE SVIH KATEGORIJA U MAIN ACTIVITY SA FIKSNIM REDOSLEDOM
+    private class LoadAllCategoriesTask extends AsyncTask<Void, Integer, List<CategoryData>> {
+        private int totalCategories;
+        private int loadedCategories;
 
         @Override
-        protected Boolean doInBackground(Void... voids) {
-            MainActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return false;
+        protected void onPreExecute() {
+            showLoading();
+            setLoadingText("Učitavam kategorije...");
 
-            try {
-                String cacheKey = "main_xml_permanent_v1";
-                String xmlContent = cacheManager.getFilteredXml(xmlUrl, cacheKey, blockedVideosPrefs);
-
-                if (xmlContent == null || xmlContent.isEmpty()) {
-                    return false;
-                }
-
-                Document doc = Jsoup.parse(xmlContent, "", Parser.xmlParser());
-                Elements categoryEls = doc.select("movies > category, category");
-
-                List<CategoryData> newCategories = new ArrayList<>();
-                List<Movie> newMovies = new ArrayList<>();
-
-                for (Element catEl : categoryEls) {
-                    String catName = catEl.attr("name");
-                    Elements movieEls = catEl.select("movie");
-
-                    List<Movie> movies = new ArrayList<>();
-                    for (Element mEl : movieEls) {
-                        Movie movie = activity.parseMovieFromElement(mEl);
-                        if (movie != null && !activity.isVideoPermanentlyBlocked(movie.getVideoId())) {
-                            movies.add(movie);
-                            newMovies.add(movie);
-                        }
-                    }
-
-                    if (!movies.isEmpty()) {
-                        newCategories.add(new CategoryData(catName, movies));
-                    }
-                }
-
-                // POSTAVI NOVE PODATKE
-                activity.runOnUiThread(() -> {
-                    activity.categories.clear();
-                    activity.categories.addAll(newCategories);
-                    activity.allMovies.clear();
-                    activity.allMovies.addAll(newMovies);
-                    activity.categoryAdapter.notifyDataSetChanged();
-                    activity.hideLoading();
-
-                    Toast.makeText(activity,
-                            "Učitano " + activity.categories.size() + " kategorija sa interneta",
-                            Toast.LENGTH_SHORT).show();
-                });
-
-                return true;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Boolean success) {
-            MainActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return;
-
-            if (!success) {
-                activity.hideLoading();
-                Toast.makeText(activity, "Greška pri učitavanju", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    private static class BackgroundUpdateTask extends AsyncTask<Void, Void, Boolean> {
-        private WeakReference<MainActivity> activityReference;
-        private String xmlUrl;
-        private SharedPreferences blockedVideosPrefs;
-        private CacheManager cacheManager;
-
-        BackgroundUpdateTask(MainActivity activity, String xmlUrl, SharedPreferences blockedVideosPrefs, CacheManager cacheManager) {
-            this.activityReference = new WeakReference<>(activity);
-            this.xmlUrl = xmlUrl;
-            this.blockedVideosPrefs = blockedVideosPrefs;
-            this.cacheManager = cacheManager;
-        }
-
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-            MainActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return false;
-
-            try {
-                String cacheKey = "main_xml_permanent_v1";
-
-                // PROVERI DA LI TREBA AŽURIRATI (8 SATI)
-                if (cacheManager.shouldUpdateCache(cacheKey)) {
-                    String xmlContent = cacheManager.getFilteredXml(xmlUrl, cacheKey, blockedVideosPrefs);
-
-                    if (xmlContent != null && !xmlContent.isEmpty()) {
-                        Document doc = Jsoup.parse(xmlContent, "", Parser.xmlParser());
-                        Elements categoryEls = doc.select("movies > category, category");
-
-                        final int newCategoryCount = categoryEls.size();
-
-                        activity.runOnUiThread(() -> {
-                            Toast.makeText(activity,
-                                    "Ažurirani podaci u pozadini (" + newCategoryCount + " kategorija)",
-                                    Toast.LENGTH_SHORT).show();
-                        });
-
-                        return true;
-                    }
-                }
-
-                return false;
-
-            } catch (Exception e) {
-                return false;
-            }
-        }
-    }
-
-    private static class LoadNextPageTask extends AsyncTask<Void, Void, List<CategoryData>> {
-        private WeakReference<MainActivity> activityReference;
-
-        LoadNextPageTask(MainActivity activity) {
-            this.activityReference = new WeakReference<>(activity);
+            totalCategories = categoryMap.size();
+            loadedCategories = 0;
         }
 
         @Override
         protected List<CategoryData> doInBackground(Void... voids) {
-            try {
-                Thread.sleep(500);
-                MainActivity activity = activityReference.get();
-                if (activity != null && !activity.isFinishing()) {
-                    return activity.allCategories;
-                }
-                return new ArrayList<>();
-            } catch (Exception e) {
-                return new ArrayList<>();
+            // Koristimo LinkedHashMap da očuvamo redosled
+            Map<String, CategoryData> categoryDataMap = new LinkedHashMap<>();
+            CountDownLatch latch = new CountDownLatch(totalCategories);
+
+            // Inicijalizuj sve kategorije u fiksnom redosledu
+            for (String categoryName : categoryMap.keySet()) {
+                categoryDataMap.put(categoryName, new CategoryData(categoryName, new ArrayList<>()));
             }
+
+            for (Map.Entry<String, String> entry : categoryMap.entrySet()) {
+                String categoryName = entry.getKey();
+                String categoryUrl = entry.getValue();
+
+                executorService.execute(() -> {
+                    try {
+                        List<Movie> movies = loadCategoryFromUrl(categoryUrl);
+                        if (movies != null && !movies.isEmpty()) {
+                            synchronized (categoryDataMap) {
+                                categoryDataMap.put(categoryName, new CategoryData(categoryName, movies));
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    } finally {
+                        loadedCategories++;
+                        publishProgress(loadedCategories, totalCategories);
+                        latch.countDown();
+                    }
+                });
+            }
+
+            try {
+                latch.await(); // Čekaj da se sve kategorije učitaju
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // Konvertuj mapu u listu očuvavajući redosled
+            List<CategoryData> result = new ArrayList<>();
+            for (String categoryName : categoryMap.keySet()) {
+                CategoryData categoryData = categoryDataMap.get(categoryName);
+                if (categoryData != null && !categoryData.getItems().isEmpty()) {
+                    result.add(categoryData);
+                }
+            }
+
+            return result;
         }
 
         @Override
-        protected void onPostExecute(List<CategoryData> allCategoriesList) {
-            MainActivity activity = activityReference.get();
-            if (activity == null || activity.isFinishing()) return;
+        protected void onProgressUpdate(Integer... values) {
+            int current = values[0];
+            int total = values[1];
+            setLoadingText("Učitavam kategorije... (" + current + "/" + total + ")");
+        }
 
-            activity.isLoading = false;
-            activity.hideLoading();
+        @Override
+        protected void onPostExecute(List<CategoryData> result) {
+            hideLoading();
 
-            if (allCategoriesList.isEmpty()) {
-                activity.hasMoreData = false;
-                return;
+            if (result != null && !result.isEmpty()) {
+                categories.clear();
+                categories.addAll(result);
+
+                // Popuni allMovies za pretragu
+                allMovies.clear();
+                for (CategoryData category : categories) {
+                    allMovies.addAll(category.getItems());
+                }
+
+                categoryAdapter.notifyDataSetChanged();
+
+                int totalMovies = allMovies.size();
+                int totalSeries = 0;
+                for (Movie movie : allMovies) {
+                    if ("serija".equalsIgnoreCase(movie.getType()) || "series".equalsIgnoreCase(movie.getType())) {
+                        totalSeries++;
+                    }
+                }
+
+                // JEDINO OBAVEŠTENJE: Broj dostupnih video sadržaja
+                Toast.makeText(MainActivity.this,
+                        "Dostupno " + totalMovies + " video sadržaja (" + totalSeries + " serija)",
+                        Toast.LENGTH_SHORT).show();
+
+            } else {
+                Toast.makeText(MainActivity.this, "Nema video sadržaja", Toast.LENGTH_LONG).show();
+
+                // Očisti prikaz ako nema podataka
+                categories.clear();
+                allMovies.clear();
+                categoryAdapter.notifyDataSetChanged();
             }
+        }
 
-            activity.currentPage++;
-            int startIndex = activity.currentPage * activity.PAGE_SIZE;
+        private List<Movie> loadCategoryFromUrl(String urlString) {
+            List<Movie> moviesList = new ArrayList<>();
 
-            if (startIndex >= allCategoriesList.size()) {
-                activity.hasMoreData = false;
-                return;
+            try {
+                Document doc = Jsoup.connect(urlString)
+                        .timeout(10000) // Smanjen timeout na 10 sekundi
+                        .parser(Parser.xmlParser())
+                        .get();
+
+                Elements movieEls = doc.select("movie");
+
+                for (Element mEl : movieEls) {
+                    try {
+                        String title = mEl.selectFirst("title") != null ? mEl.selectFirst("title").text() : "";
+                        String year = mEl.selectFirst("year") != null ? mEl.selectFirst("year").text() : "";
+                        String genre = mEl.selectFirst("genre") != null ? mEl.selectFirst("genre").text() : "";
+                        String type = mEl.selectFirst("type") != null ? mEl.selectFirst("type").text() : "film";
+                        String description = mEl.selectFirst("description") != null ? mEl.selectFirst("description").text() : "";
+                        String imageUrl = mEl.selectFirst("imageUrl") != null ? mEl.selectFirst("imageUrl").text() : "";
+                        String videoId = mEl.selectFirst("videoId") != null ? mEl.selectFirst("videoId").text() : "";
+
+                        if (title.isEmpty() || videoId.isEmpty()) {
+                            continue;
+                        }
+
+                        List<Season> seasons = null;
+                        String seasonsJson = null;
+
+                        // KOMPLEKSNA OBRADA SEZONA I EPIZODA ZA SERIJE
+                        if ("serija".equalsIgnoreCase(type) || "series".equalsIgnoreCase(type)) {
+                            Elements seasonsEls = mEl.select("seasons > season");
+                            if (!seasonsEls.isEmpty()) {
+                                seasons = new ArrayList<>();
+                                JSONArray sArray = new JSONArray();
+                                for (Element sEl : seasonsEls) {
+                                    int seasonNumber = 1;
+                                    try {
+                                        seasonNumber = Integer.parseInt(sEl.attr("number"));
+                                    } catch (Exception ignored) {}
+
+                                    Elements episodeEls = sEl.select("episode");
+                                    List<Episode> episodes = new ArrayList<>();
+                                    JSONArray eArray = new JSONArray();
+
+                                    for (Element epEl : episodeEls) {
+                                        String epTitle = epEl.selectFirst("title") != null ? epEl.selectFirst("title").text() : "";
+                                        String epImage = epEl.selectFirst("imageUrl") != null ? epEl.selectFirst("imageUrl").text() : "";
+                                        String epVideoId = epEl.selectFirst("videoId") != null ? epEl.selectFirst("videoId").text() : "";
+
+                                        // DODAJ EPIZODU SAMO AKO IMA VALIDNE PODATKE
+                                        if (!epVideoId.isEmpty()) {
+                                            episodes.add(new Episode(epTitle, epImage, epVideoId));
+                                            JSONObject eObj = new JSONObject();
+                                            eObj.put("title", epTitle);
+                                            eObj.put("imageUrl", epImage);
+                                            eObj.put("videoId", epVideoId);
+                                            eArray.put(eObj);
+                                        }
+                                    }
+
+                                    if (!episodes.isEmpty()) {
+                                        seasons.add(new Season(seasonNumber, episodes));
+                                        JSONObject sObj = new JSONObject();
+                                        sObj.put("number", seasonNumber);
+                                        sObj.put("episodes", eArray);
+                                        sArray.put(sObj);
+                                    }
+                                }
+                                seasonsJson = sArray.toString();
+                            }
+                        }
+
+                        Movie movie = new Movie(title, year, genre, type, description, imageUrl, videoId, seasons, seasonsJson);
+                        moviesList.add(movie);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                return moviesList;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                return moviesList;
             }
-
-            int endIndex = Math.min(startIndex + activity.PAGE_SIZE, allCategoriesList.size());
-            List<CategoryData> newCategories = allCategoriesList.subList(startIndex, endIndex);
-
-            int startPosition = activity.categories.size();
-            activity.categories.addAll(newCategories);
-            activity.categoryAdapter.notifyItemRangeInserted(startPosition, newCategories.size());
-
-            activity.hasMoreData = endIndex < allCategoriesList.size();
         }
     }
 }
