@@ -77,7 +77,7 @@ public class PlayerActivity extends AppCompatActivity {
 
         String videoId = getIntent().getStringExtra("videoId");
         if (videoId == null) videoId = "";
-        String url = "https://sevcet.github.io/sait.html?videoId=" + videoId + "&autoplay=1";
+        String url = "https://sevcet.github.io/youflixauto.html?videoId=" + videoId + "&autoplay=1";
 
         webView.loadUrl(url);
     }
